@@ -1,0 +1,11 @@
+/usr/bin/cmake -DCMAKE_BUILD_TYPE=Debug -S /root/software/rabiitmq/C-RabbimqDemo -B /root/software/rabiitmq/C-RabbimqDemo/cmake-build-debug-gcc-ubuntu2004
+-- ==============================
+-- CMAKE_INCLUDE_CURRENT_DIR: 
+-- CMAKE_LIBRARY_PATH: 
+-- CMAKE_SYSTEM_INCLUDE_PATH: /usr/include/X11
+-- CMAKE_SYSTEM_LIBRARY_PATH: /usr/lib/X11
+-- CMAKE_MODULE_PATH: 
+-- ==============================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /root/software/rabiitmq/C-RabbimqDemo/cmake-build-debug-gcc-ubuntu2004

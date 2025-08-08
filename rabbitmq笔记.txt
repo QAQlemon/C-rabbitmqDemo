@@ -1,0 +1,12 @@
+==========================================================
+安装rabbitmq-c库
+    mkdir build
+    cmake ..
+    cmake --build . --config Release --target install
+==========================================================
+rabbitmq
+    channel
+    exchange
+    bind
+    routingKey
+    queue

@@ -1,0 +1,12 @@
+//
+// Created by QAQlemon on 2025/8/8.
+//
+
+#ifndef C_RABBITMQDEMO_RABBITMQ_C_H
+#define C_RABBITMQDEMO_RABBITMQ_C_H
+
+
+
+
+
+#endif //C_RABBITMQDEMO_RABBITMQ_C_H

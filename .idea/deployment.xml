@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" serverName="本地虚拟机" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <serverData>
+      <paths name="GCC-ubuntu20.04 (5af9fa22-82e0-4dcc-992b-9ba4c00e73e4)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="rabiitmq/C-RabbimqDemo" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+      <paths name="delbian (7cb632d6-a9d4-4c79-a892-8fd20312eaec)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/tmp.Tt2zeLAu7x" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>
