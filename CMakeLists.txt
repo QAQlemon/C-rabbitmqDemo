@@ -1,8 +1,14 @@
 cmake_minimum_required(VERSION 3.22)
 project(demo)
 
-set(INCLUDE_DIR "/usr/local/include")  # 或实际安装路径
-set(LIBRARY_DIR "/usr/local/lib")  # 或实际库路径
+set(INCLUDE_DIR
+    "/usr/local/include"
+
+)  # 或实际安装路径
+set(LIBRARY_DIR
+    "/usr/local/lib"
+    "/usr/lib"
+)  # 或实际库路径
 
 include_directories(${INCLUDE_DIR})
 link_directories(${LIBRARY_DIR})
@@ -14,9 +20,13 @@ link_directories(${LIBRARY_DIR})
 
 #find_package(RABBTMQ_C REQUIRED)
 
+aux_source_directory(./source PROJ_SRC)
+aux_source_directory(./examples PROJ_EXAMPLE)
 
 add_executable(target
-        source/rabbitmq-c.c
+#        source/rabbitmq-c.c
+        ${PROJ_SRC}
+        ${PROJ_EXAMPLE}
 )
 message(STATUS "==============================")
 # 输出系统包含路径
@@ -28,5 +38,5 @@ message(STATUS "CMAKE_SYSTEM_LIBRARY_PATH: ${CMAKE_SYSTEM_LIBRARY_PATH}")
 # 输出当前查找路径
 message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
 message(STATUS "==============================")
-#target_link_directories(target )
-#target_link_libraries(target )
+#target_link_directories(target /usr/local/lib/)
+target_link_libraries(target rabbitmq)

@@ -1,0 +1,51 @@
+头文件
+    amqp.h              核心头文件，包含主要的AMQP类型和函数声明
+    amqp_framing.h      AMQP帧级别操作函数
+    amqp_tcp_socket.h   TCP套接字连接支持
+    amqp_ssl_socket.h   SSL套接字连接支持
+全局变量
+    amqp_bytes_t amqp_empty_bytes;
+    amqp_table_t amqp_empty_table;
+重要数据结构
+    amqp_bytes_t
+        用于存储：
+            消息体 message.body
+            队列名 queue.name
+            路由键 routing_key
+API
+    1.common API
+        amqp_rpc_reply_t amqp_get_rpc_reply(amqp_connection_state_t state);
+                作用：
+                    获取上一次 AMQP 操作的响应状态 的核心函数
+
+    2.consumer API
+
+        amqp_basic_ack(conn, channel, envelope.delivery_tag, multiple);
+            作用：
+                手动ack
+            参数：
+                multiple 0-仅确认当前消息
+                         1-确认比delivery_tag小的未确认消息
+        amqp_basic_reject(conn, channel, delivery_tag, requeue);
+            作用：拒绝单条消息
+            参数：
+
+        amqp_basic_nack(conn, channel, delivery_tag, multiple, requeue);
+            作用：拒绝多条消息(可批量)
+
+
+    3.producer API
+        amqp_basic_publish()
+        amqp_publisher_confirm_wait()
+
+
+
+
+
+
+
+
+
+
+
+

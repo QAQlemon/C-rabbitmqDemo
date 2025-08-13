@@ -5,8 +5,32 @@
     cmake --build . --config Release --target install
 ==========================================================
 rabbitmq
-    channel
-    exchange
-    bind
-    routingKey
-    queue
+    核心概念：
+        channel
+        exchange 交换机
+            接收来自生产者的消息，并将消息推送到队列中
+            决定是将这些消息推送到特定队列还是推送到多个队列，亦或者是把消息丢弃
+            按照以下方式执行：
+                bindingkey 绑定键
+                    交换机与队列进行绑定
+                routingKey 路由键
+                    Direct Exchange 需要精确匹配
+                    Topic Exchange  模式匹配
+            类型：
+                direct  根据routingKey将不同的消息发给不同的队列消费,不可使用通配符
+                fanout  把消息发送给绑定到该交换机的所有队列
+                topic   bindingKey可使用通配符(xxx.*,xxx.#)
+                headers
+        queue  队列
+            排他队列
+        consumer 消费者
+
+
+    持久化机制：
+        交换机持久化
+        队列持久化
+        消息持久化
+
+
+
+

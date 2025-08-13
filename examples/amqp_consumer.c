@@ -33,8 +33,7 @@ static void run(amqp_connection_state_t conn) {
     now = now_microseconds();
     if (now > next_summary_time) {
       int countOverInterval = received - previous_received;
-      double intervalRate =
-          countOverInterval / ((now - previous_report_time) / 1000000.0);
+      double intervalRate = countOverInterval / ((now - previous_report_time) / 1000000.0);
       printf("%d ms: Received %d - %d since last report (%d Hz)\n",
              (int)(now - start_time) / 1000, received, countOverInterval,
              (int)intervalRate);
@@ -48,8 +47,7 @@ static void run(amqp_connection_state_t conn) {
     ret = amqp_consume_message(conn, &envelope, NULL, 0);
 
     if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
-      if (AMQP_RESPONSE_LIBRARY_EXCEPTION == ret.reply_type &&
-          AMQP_STATUS_UNEXPECTED_STATE == ret.library_error) {
+      if (AMQP_RESPONSE_LIBRARY_EXCEPTION == ret.reply_type && AMQP_STATUS_UNEXPECTED_STATE == ret.library_error) {
         if (AMQP_STATUS_OK != amqp_simple_wait_frame(conn, &frame)) {
           return;
         }
