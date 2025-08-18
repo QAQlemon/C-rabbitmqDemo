@@ -69,31 +69,111 @@ include CMakeFiles/target.dir/progress.make
 # Include the compile flags for this target's objects.
 include CMakeFiles/target.dir/flags.make
 
-CMakeFiles/target.dir/rabbitmq-c.c.o: CMakeFiles/target.dir/flags.make
-CMakeFiles/target.dir/rabbitmq-c.c.o: ../rabbitmq-c.c
-CMakeFiles/target.dir/rabbitmq-c.c.o: CMakeFiles/target.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/software/rabiitmq/C-RabbimqDemo/cmake-build-debug-gcc-ubuntu2004/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object CMakeFiles/target.dir/rabbitmq-c.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/target.dir/rabbitmq-c.c.o -MF CMakeFiles/target.dir/rabbitmq-c.c.o.d -o CMakeFiles/target.dir/rabbitmq-c.c.o -c /root/software/rabiitmq/C-RabbimqDemo/rabbitmq-c.c
+CMakeFiles/target.dir/source/rabbitmq-c.c.o: CMakeFiles/target.dir/flags.make
+CMakeFiles/target.dir/source/rabbitmq-c.c.o: ../source/rabbitmq-c.c
+CMakeFiles/target.dir/source/rabbitmq-c.c.o: CMakeFiles/target.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/software/rabiitmq/C-RabbimqDemo/cmake-build-debug-gcc-ubuntu2004/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object CMakeFiles/target.dir/source/rabbitmq-c.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/target.dir/source/rabbitmq-c.c.o -MF CMakeFiles/target.dir/source/rabbitmq-c.c.o.d -o CMakeFiles/target.dir/source/rabbitmq-c.c.o -c /root/software/rabiitmq/C-RabbimqDemo/source/rabbitmq-c.c
 
-CMakeFiles/target.dir/rabbitmq-c.c.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/target.dir/rabbitmq-c.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /root/software/rabiitmq/C-RabbimqDemo/rabbitmq-c.c > CMakeFiles/target.dir/rabbitmq-c.c.i
+CMakeFiles/target.dir/source/rabbitmq-c.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/target.dir/source/rabbitmq-c.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /root/software/rabiitmq/C-RabbimqDemo/source/rabbitmq-c.c > CMakeFiles/target.dir/source/rabbitmq-c.c.i
 
-CMakeFiles/target.dir/rabbitmq-c.c.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/target.dir/rabbitmq-c.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /root/software/rabiitmq/C-RabbimqDemo/rabbitmq-c.c -o CMakeFiles/target.dir/rabbitmq-c.c.s
+CMakeFiles/target.dir/source/rabbitmq-c.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/target.dir/source/rabbitmq-c.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /root/software/rabiitmq/C-RabbimqDemo/source/rabbitmq-c.c -o CMakeFiles/target.dir/source/rabbitmq-c.c.s
+
+CMakeFiles/target.dir/source/utils.c.o: CMakeFiles/target.dir/flags.make
+CMakeFiles/target.dir/source/utils.c.o: ../source/utils.c
+CMakeFiles/target.dir/source/utils.c.o: CMakeFiles/target.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/software/rabiitmq/C-RabbimqDemo/cmake-build-debug-gcc-ubuntu2004/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object CMakeFiles/target.dir/source/utils.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/target.dir/source/utils.c.o -MF CMakeFiles/target.dir/source/utils.c.o.d -o CMakeFiles/target.dir/source/utils.c.o -c /root/software/rabiitmq/C-RabbimqDemo/source/utils.c
+
+CMakeFiles/target.dir/source/utils.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/target.dir/source/utils.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /root/software/rabiitmq/C-RabbimqDemo/source/utils.c > CMakeFiles/target.dir/source/utils.c.i
+
+CMakeFiles/target.dir/source/utils.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/target.dir/source/utils.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /root/software/rabiitmq/C-RabbimqDemo/source/utils.c -o CMakeFiles/target.dir/source/utils.c.s
+
+CMakeFiles/target.dir/examples/amqp_confirm_select.c.o: CMakeFiles/target.dir/flags.make
+CMakeFiles/target.dir/examples/amqp_confirm_select.c.o: ../examples/amqp_confirm_select.c
+CMakeFiles/target.dir/examples/amqp_confirm_select.c.o: CMakeFiles/target.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/software/rabiitmq/C-RabbimqDemo/cmake-build-debug-gcc-ubuntu2004/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building C object CMakeFiles/target.dir/examples/amqp_confirm_select.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/target.dir/examples/amqp_confirm_select.c.o -MF CMakeFiles/target.dir/examples/amqp_confirm_select.c.o.d -o CMakeFiles/target.dir/examples/amqp_confirm_select.c.o -c /root/software/rabiitmq/C-RabbimqDemo/examples/amqp_confirm_select.c
+
+CMakeFiles/target.dir/examples/amqp_confirm_select.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/target.dir/examples/amqp_confirm_select.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /root/software/rabiitmq/C-RabbimqDemo/examples/amqp_confirm_select.c > CMakeFiles/target.dir/examples/amqp_confirm_select.c.i
+
+CMakeFiles/target.dir/examples/amqp_confirm_select.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/target.dir/examples/amqp_confirm_select.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /root/software/rabiitmq/C-RabbimqDemo/examples/amqp_confirm_select.c -o CMakeFiles/target.dir/examples/amqp_confirm_select.c.s
+
+CMakeFiles/target.dir/examples/amqp_consumer.c.o: CMakeFiles/target.dir/flags.make
+CMakeFiles/target.dir/examples/amqp_consumer.c.o: ../examples/amqp_consumer.c
+CMakeFiles/target.dir/examples/amqp_consumer.c.o: CMakeFiles/target.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/software/rabiitmq/C-RabbimqDemo/cmake-build-debug-gcc-ubuntu2004/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building C object CMakeFiles/target.dir/examples/amqp_consumer.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/target.dir/examples/amqp_consumer.c.o -MF CMakeFiles/target.dir/examples/amqp_consumer.c.o.d -o CMakeFiles/target.dir/examples/amqp_consumer.c.o -c /root/software/rabiitmq/C-RabbimqDemo/examples/amqp_consumer.c
+
+CMakeFiles/target.dir/examples/amqp_consumer.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/target.dir/examples/amqp_consumer.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /root/software/rabiitmq/C-RabbimqDemo/examples/amqp_consumer.c > CMakeFiles/target.dir/examples/amqp_consumer.c.i
+
+CMakeFiles/target.dir/examples/amqp_consumer.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/target.dir/examples/amqp_consumer.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /root/software/rabiitmq/C-RabbimqDemo/examples/amqp_consumer.c -o CMakeFiles/target.dir/examples/amqp_consumer.c.s
+
+CMakeFiles/target.dir/examples/amqp_listen.c.o: CMakeFiles/target.dir/flags.make
+CMakeFiles/target.dir/examples/amqp_listen.c.o: ../examples/amqp_listen.c
+CMakeFiles/target.dir/examples/amqp_listen.c.o: CMakeFiles/target.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/software/rabiitmq/C-RabbimqDemo/cmake-build-debug-gcc-ubuntu2004/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building C object CMakeFiles/target.dir/examples/amqp_listen.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/target.dir/examples/amqp_listen.c.o -MF CMakeFiles/target.dir/examples/amqp_listen.c.o.d -o CMakeFiles/target.dir/examples/amqp_listen.c.o -c /root/software/rabiitmq/C-RabbimqDemo/examples/amqp_listen.c
+
+CMakeFiles/target.dir/examples/amqp_listen.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/target.dir/examples/amqp_listen.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /root/software/rabiitmq/C-RabbimqDemo/examples/amqp_listen.c > CMakeFiles/target.dir/examples/amqp_listen.c.i
+
+CMakeFiles/target.dir/examples/amqp_listen.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/target.dir/examples/amqp_listen.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /root/software/rabiitmq/C-RabbimqDemo/examples/amqp_listen.c -o CMakeFiles/target.dir/examples/amqp_listen.c.s
+
+CMakeFiles/target.dir/examples/amqp_sendstring.c.o: CMakeFiles/target.dir/flags.make
+CMakeFiles/target.dir/examples/amqp_sendstring.c.o: ../examples/amqp_sendstring.c
+CMakeFiles/target.dir/examples/amqp_sendstring.c.o: CMakeFiles/target.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/software/rabiitmq/C-RabbimqDemo/cmake-build-debug-gcc-ubuntu2004/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building C object CMakeFiles/target.dir/examples/amqp_sendstring.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/target.dir/examples/amqp_sendstring.c.o -MF CMakeFiles/target.dir/examples/amqp_sendstring.c.o.d -o CMakeFiles/target.dir/examples/amqp_sendstring.c.o -c /root/software/rabiitmq/C-RabbimqDemo/examples/amqp_sendstring.c
+
+CMakeFiles/target.dir/examples/amqp_sendstring.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/target.dir/examples/amqp_sendstring.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /root/software/rabiitmq/C-RabbimqDemo/examples/amqp_sendstring.c > CMakeFiles/target.dir/examples/amqp_sendstring.c.i
+
+CMakeFiles/target.dir/examples/amqp_sendstring.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/target.dir/examples/amqp_sendstring.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /root/software/rabiitmq/C-RabbimqDemo/examples/amqp_sendstring.c -o CMakeFiles/target.dir/examples/amqp_sendstring.c.s
 
 # Object files for target target
 target_OBJECTS = \
-"CMakeFiles/target.dir/rabbitmq-c.c.o"
+"CMakeFiles/target.dir/source/rabbitmq-c.c.o" \
+"CMakeFiles/target.dir/source/utils.c.o" \
+"CMakeFiles/target.dir/examples/amqp_confirm_select.c.o" \
+"CMakeFiles/target.dir/examples/amqp_consumer.c.o" \
+"CMakeFiles/target.dir/examples/amqp_listen.c.o" \
+"CMakeFiles/target.dir/examples/amqp_sendstring.c.o"
 
 # External object files for target target
 target_EXTERNAL_OBJECTS =
 
-target: CMakeFiles/target.dir/rabbitmq-c.c.o
+target: CMakeFiles/target.dir/source/rabbitmq-c.c.o
+target: CMakeFiles/target.dir/source/utils.c.o
+target: CMakeFiles/target.dir/examples/amqp_confirm_select.c.o
+target: CMakeFiles/target.dir/examples/amqp_consumer.c.o
+target: CMakeFiles/target.dir/examples/amqp_listen.c.o
+target: CMakeFiles/target.dir/examples/amqp_sendstring.c.o
 target: CMakeFiles/target.dir/build.make
 target: CMakeFiles/target.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/root/software/rabiitmq/C-RabbimqDemo/cmake-build-debug-gcc-ubuntu2004/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C executable target"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/root/software/rabiitmq/C-RabbimqDemo/cmake-build-debug-gcc-ubuntu2004/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Linking C executable target"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/target.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

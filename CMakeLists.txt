@@ -21,12 +21,12 @@ link_directories(${LIBRARY_DIR})
 #find_package(RABBTMQ_C REQUIRED)
 
 aux_source_directory(./source PROJ_SRC)
-aux_source_directory(./examples PROJ_EXAMPLE)
+#aux_source_directory(./examples PROJ_EXAMPLE)
 
 add_executable(target
 #        source/rabbitmq-c.c
         ${PROJ_SRC}
-        ${PROJ_EXAMPLE}
+#        ${PROJ_EXAMPLE}
 )
 message(STATUS "==============================")
 # 输出系统包含路径
@@ -37,6 +37,8 @@ message(STATUS "CMAKE_SYSTEM_LIBRARY_PATH: ${CMAKE_SYSTEM_LIBRARY_PATH}")
 
 # 输出当前查找路径
 message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
+
+
 message(STATUS "==============================")
 #target_link_directories(target /usr/local/lib/)
 target_link_libraries(target rabbitmq)

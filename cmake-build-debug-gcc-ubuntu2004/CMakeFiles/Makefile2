@@ -81,12 +81,12 @@ clean: CMakeFiles/target.dir/clean
 CMakeFiles/target.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/target.dir/build.make CMakeFiles/target.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/target.dir/build.make CMakeFiles/target.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/root/software/rabiitmq/C-RabbimqDemo/cmake-build-debug-gcc-ubuntu2004/CMakeFiles --progress-num=1,2 "Built target target"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/root/software/rabiitmq/C-RabbimqDemo/cmake-build-debug-gcc-ubuntu2004/CMakeFiles --progress-num=1,2,3,4,5,6,7 "Built target target"
 .PHONY : CMakeFiles/target.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/target.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /root/software/rabiitmq/C-RabbimqDemo/cmake-build-debug-gcc-ubuntu2004/CMakeFiles 2
+	$(CMAKE_COMMAND) -E cmake_progress_start /root/software/rabiitmq/C-RabbimqDemo/cmake-build-debug-gcc-ubuntu2004/CMakeFiles 7
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/target.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /root/software/rabiitmq/C-RabbimqDemo/cmake-build-debug-gcc-ubuntu2004/CMakeFiles 0
 .PHONY : CMakeFiles/target.dir/rule

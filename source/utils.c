@@ -10,16 +10,20 @@
 #include <rabbitmq-c/amqp.h>
 #include <rabbitmq-c/framing.h>
 #include <stdint.h>
+#include <pthread.h>
 
 #include "utils.h"
 
+
+
 void die(const char *fmt, ...) {
   va_list ap;
-  va_start(ap, fmt);
+  va_start(ap, fmt);//va_start(ap,last_arg)
   vfprintf(stderr, fmt, ap);
   va_end(ap);
   fprintf(stderr, "\n");
   exit(1);
+
 }
 
 void die_on_error(int x, char const *context) {
@@ -129,8 +133,7 @@ void amqp_dump(void const *buffer, size_t len) {
       if (rows_eq(oldchs, chs)) {
         if (!showed_dots) {
           showed_dots = 1;
-          printf(
-              "          .. .. .. .. .. .. .. .. : .. .. .. .. .. .. .. ..\n");
+          printf("          .. .. .. .. .. .. .. .. : .. .. .. .. .. .. .. ..\n");
         }
       } else {
         showed_dots = 0;
@@ -151,6 +154,8 @@ void amqp_dump(void const *buffer, size_t len) {
   dump_row(count, numinrow, chs);
 
   if (numinrow != 0) {
-    printf("%08lX:\n", count);
+    printf("%08lX:\n\n", count);//字节数
   }
+
+
 }

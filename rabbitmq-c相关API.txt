@@ -12,17 +12,72 @@
             消息体 message.body
             队列名 queue.name
             路由键 routing_key
+    amqp_rpc_reply_t
+        作用：RPC调用响应，标识AMQP方法调用的响应状态（如队列声明、消息发布等操作的结果）
+    amqp_envelope_t
+        作用：消费者获取消息的载体
+    amqp_frame_t
+        作用：底层数据帧
 API
     1.common API
-        amqp_rpc_reply_t amqp_get_rpc_reply(amqp_connection_state_t state);
-                作用：
-                    获取上一次 AMQP 操作的响应状态 的核心函数
 
+        amqp_simple_wait_frame(conn, &frame)
+            作用：
+                直接从 TCP 连接读取完整的 AMQP 协议帧（包括方法帧、内容头帧和内容体帧），如果没有数据可读，函数会阻塞当前线程直到数据到达或出错
+                高级 API（如 amqp_consume_message）内部都调用此函数实现
+
+        amqp_rpc_reply_t amqp_get_rpc_reply(amqp_connection_state_t state);
+            作用：
+                获取上一次 AMQP 操作的响应状态 的核心函数
+
+        amqp_read_message(connState, frame.channel, &message, 0);
+            作用：
+                处理被退回的消息
+
+        amqp_queue_declare_ok_t * amqp_queue_declare(
+            amqp_connection_state_t state, amqp_channel_t channel, amqp_bytes_t queue,
+            amqp_boolean_t passive, amqp_boolean_t durable, amqp_boolean_t exclusive,
+            amqp_boolean_t auto_delete, amqp_table_t arguments
+        );
+            作用：
+                创建队列
+            参数：
+                passive
+                    0-队列不存在会自动创建；存在则检查参数是否匹配已有的队列，不匹配返回错误
+                    1-仅检查队列是否存在，不修改属性，只读操作
+                durable         队列持久化
+                exclusive
+                    1-仅限当前连接访问
+                    0-共享队列
+                auto_delete
+                    1-当队列的最后一个消费者取消订阅时自动删除
+                    0-不自动删除
     2.consumer API
+        amqp_basic_consume(
+                connState,
+                1,
+                queue_name,
+                amqp_cstring_bytes("consumer00"),// 消费者标签(空字节则服务器自动生成)
+                0,//no_local 是否接收自己发布的消息
+                0,//no_ack 0-手动ACK 1-自动ACK
+                0,//exclusive 排他消费
+                amqp_empty_table//额外参数 (通常用amqp_empty_table)
+        )
+            作用：启动消费者进行消费
+
+        被动获取：
+            amqp_consume_message(connState, &envelope, NULL, 0);
+                 作用：阻塞等待消息amqp_envelope_t
+            amqp_basic_qos()
+            amqp_basic_consume()
+
+        主动获取：
+            amqp_read_message(connState, frame.channel, &message, 0);
+                 作用：非阻塞，手动读取消息amqp_message_t，判断返回值reply_type 是否为 AMQP_RESPONSE_NORMAL
+            amqp_basic_get()
 
         amqp_basic_ack(conn, channel, envelope.delivery_tag, multiple);
-            作用：
-                手动ack
+            作用：手动ack
             参数：
                 multiple 0-仅确认当前消息
                          1-确认比delivery_tag小的未确认消息
@@ -32,12 +87,18 @@ API
 
         amqp_basic_nack(conn, channel, delivery_tag, multiple, requeue);
             作用：拒绝多条消息(可批量)
-
+            参数：
+                multiple
+                    1-可以nack该消费者先前接收未ack的所有消息
 
     3.producer API
+        amqp_confirm_select()
+            作用：
         amqp_basic_publish()
-        amqp_publisher_confirm_wait()
+            作用：消息发送
 
+        amqp_publisher_confirm_wait()
+            作用：阻塞等待确认，自带超时机制
 
 
 

@@ -1,1 +1,1 @@
-/usr/bin/cc -g CMakeFiles/target.dir/rabbitmq-c.c.o -o target   -L/usr/local/lib 
+/usr/bin/cc -g CMakeFiles/target.dir/source/rabbitmq-c.c.o CMakeFiles/target.dir/source/utils.c.o CMakeFiles/target.dir/examples/amqp_confirm_select.c.o CMakeFiles/target.dir/examples/amqp_consumer.c.o CMakeFiles/target.dir/examples/amqp_listen.c.o CMakeFiles/target.dir/examples/amqp_sendstring.c.o -o target   -L/usr/local/lib  -Wl,-rpath,/usr/local/lib -lrabbitmq 
