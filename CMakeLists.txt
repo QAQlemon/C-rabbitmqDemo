@@ -21,12 +21,12 @@ link_directories(${LIBRARY_DIR})
 #find_package(RABBTMQ_C REQUIRED)
 
 aux_source_directory(./source PROJ_SRC)
-#aux_source_directory(./examples PROJ_EXAMPLE)
+#aux_source_directory(./demo PROJ_DEMO_SRC)
 
 add_executable(target
 #        source/rabbitmq-c.c
         ${PROJ_SRC}
-#        ${PROJ_EXAMPLE}
+#        ${PROJ_DEMO_SRC}
 )
 message(STATUS "==============================")
 # 输出系统包含路径

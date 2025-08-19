@@ -1,10 +1,5 @@
 
-void consumer_init();
 
-void main(){
-
-}
-
-void consumer_init() {
+void consumer_task(){
 
 }

@@ -4,6 +4,18 @@
     cmake ..
     cmake --build . --config Release --target install
 ==========================================================
+AMQP
+    帧结构：
+
+    帧类型：
+        AMQP_FRAME_METHOD       方法帧
+        AMQP_FRAME_HEADER       消息头帧
+        AMQP_FRAME_BODY         消息体帧
+        AMQP_FRAME_HEARTBEAT    心跳帧
+    通信过程
+
+
+==========================================================
 rabbitmq
     核心概念：
         channel
