@@ -1,5 +1,1 @@
 
-
-void consumer_task(){
-
-}

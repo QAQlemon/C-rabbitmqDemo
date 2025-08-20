@@ -248,7 +248,7 @@ void *consumer_task(void *args){
             amqp_cstring_bytes(queue),
             amqp_cstring_bytes("consumer00"),// 消费者标签(空字节则服务器自动生成)
             0,//no_local 是否接收自己发布的消息
-            0,//no_ack 0-手动ACK 1-自动ACK
+            1,//no_ack 0-手动ACK 1-自动ACK
             0,//exclusive 排他消费
             amqp_empty_table//额外参数 (通常用amqp_empty_table)
     );

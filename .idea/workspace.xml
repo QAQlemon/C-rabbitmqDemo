@@ -20,17 +20,11 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d37117ee-6323-43db-931c-5f8935bd59a7" name="更改" comment="Rabbit考虑线程问题">
-      <change afterPath="$PROJECT_DIR$/demo/demo.c" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/demo/utils.c" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/demo/utils.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/source/log.c" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/source/log.h" afterDir="false" />
+    <list default="true" id="d37117ee-6323-43db-931c-5f8935bd59a7" name="更改" comment="Rabbit-c完成基本demo,准备对消费者和生产者相关功能进行封装">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/demo/demo.c" beforeDir="false" afterPath="$PROJECT_DIR$/demo/demo.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/rabbitmq笔记.txt" beforeDir="false" afterPath="$PROJECT_DIR$/rabbitmq笔记.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/consumer.c" beforeDir="false" afterPath="$PROJECT_DIR$/source/consumer.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/producer.c" beforeDir="false" afterPath="$PROJECT_DIR$/source/producer.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/rabbitmq-c.c" beforeDir="false" afterPath="$PROJECT_DIR$/source/rabbitmq-c.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/rabbitmq-c.h" beforeDir="false" afterPath="$PROJECT_DIR$/source/rabbitmq-c.h" afterDir="false" />
     </list>
@@ -70,7 +64,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "CMake 应用程序.target.executor": "Run",
+    "CMake 应用程序.target.executor": "Debug",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
@@ -106,9 +100,9 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake 应用程序.target">
-    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
-        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
     <configuration name="target" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="demo" TARGET_NAME="target" CONFIG_NAME="Debug-GCC-ubuntu20.04" RUN_TARGET_PROJECT_NAME="demo" RUN_TARGET_NAME="target">
@@ -153,7 +147,8 @@
       <workItem from="1755480391846" duration="20553000" />
       <workItem from="1755509894239" duration="91000" />
       <workItem from="1755564287185" duration="5575000" />
-      <workItem from="1755572814027" duration="18608000" />
+      <workItem from="1755572814027" duration="18803000" />
+      <workItem from="1755653370458" duration="22444000" />
     </task>
     <task id="LOCAL-00001" summary="start">
       <option name="closed" value="true" />
@@ -195,7 +190,23 @@
       <option name="project" value="LOCAL" />
       <updated>1755509967682</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Rabbit-c完成基本demo,准备对消费者和生产者相关功能进行封装">
+      <option name="closed" value="true" />
+      <created>1755595943953</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1755595943953</updated>
+    </task>
+    <task id="LOCAL-00007" summary="Rabbit-c完成基本demo,准备对消费者和生产者相关功能进行封装">
+      <option name="closed" value="true" />
+      <created>1755596042739</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1755596042739</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -217,7 +228,7 @@
                   <entry key="branch">
                     <value>
                       <list>
-                        <option value="origin/main" />
+                        <option value="main" />
                       </list>
                     </value>
                   </entry>
@@ -233,6 +244,34 @@
     <MESSAGE value="start" />
     <MESSAGE value="Rabbit消费端例程" />
     <MESSAGE value="Rabbit考虑线程问题" />
-    <option name="LAST_COMMIT_MESSAGE" value="Rabbit考虑线程问题" />
+    <MESSAGE value="Rabbit-c完成基本demo,准备对消费者和生产者相关功能进行封装" />
+    <option name="LAST_COMMIT_MESSAGE" value="Rabbit-c完成基本demo,准备对消费者和生产者相关功能进行封装" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/demo/demo.c</url>
+          <line>158</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/source/rabbitmq-c.c</url>
+          <line>171</line>
+          <option name="timeStamp" value="4" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+    <watches-manager>
+      <configuration name="CMakeRunConfiguration">
+        <watch expression="rabbitmqConfigInfo" />
+        <watch expression="rabbitmqConnsInfo" />
+        <watch expression="exchangeInfo" />
+        <watch expression="queueInfo" />
+        <watch expression="bindsInfo" />
+        <watch expression="consumersInfo" />
+        <watch expression="producersInfo" />
+      </configuration>
+    </watches-manager>
   </component>
 </project>
