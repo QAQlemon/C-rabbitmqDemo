@@ -61,7 +61,7 @@ typedef struct{
     connectionEntity conns[CONNECTION_MAX_SIZE];
 }connectionsInfo_t;//包含连接、通道信息
 
-
+#define QUEUE_MAX_SIZE 3
 typedef struct {
     int type;//0-整数 1-字符串
     char *key;
@@ -70,7 +70,7 @@ typedef struct {
         char *str;
     }value;
 }xargs_t;
-typedef struct {
+typedef struct{
     char *name;
 
     int type;//0-classic 1-quorum 2-stream | 3-Lazy 4-dead-letter
@@ -79,11 +79,15 @@ typedef struct {
     int exclusive;//排他队列（队列为连接私有，同连接下队列可见） 0-不开启 1-开启
     int auto_delete;//0-不开启 1-开启
 
-    xargs_t args[9];
-//    amqp_table_t args;
-}RabbitmqQueue_t;//队列
-
+    xargs_t args[9];//用于构建amqp_table_t
+}RabbitmqQueueEntity_t;
 typedef struct {
+    int size;
+    RabbitmqQueueEntity_t queues[QUEUE_MAX_SIZE];
+}RabbitmqQueues_t;//队列
+
+#define EXCHANGE_MAX_SIZE 3
+typedef struct{
     char *name;
     int type;       //0-direct 1-fanout 2-topic 3-headers
     int durability;
@@ -91,9 +95,14 @@ typedef struct {
     int internal;   //标识为内部交换机
 //    amqp_table_t args;
     xargs_t args[1];
-}RabbitmqExchange_t;//交换机
-
+}RabbitmqExchangeEntity ;
 typedef struct {
+    int size;
+    RabbitmqExchangeEntity exchanges[EXCHANGE_MAX_SIZE];
+}RabbitmqExchanges_t;//交换机
+
+#define BIND_MAX_SIZE 3
+typedef struct{
 //    int conn_index;
 //    int channel_index;//通道
 
@@ -101,14 +110,18 @@ typedef struct {
 
     int exchange_index;
     int queue_index;
-}RabbitmqBind_t;//绑定
+}RabbitmqBindEntity_t;
+typedef struct {
+    int size;
+    RabbitmqBindEntity_t binds[BIND_MAX_SIZE];
+}RabbitmqBinds_t;//绑定
 
 
 
 #define CONSUMER_MAX_SIZE 2
 typedef struct{
-    int conn_index;
-    int channel_index;
+    int conn_index;     //连接：rabbitmqConnsInfo.conns[conn_index]
+    int channel_index;  //通道：rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index]
 
     //消息接收的全局设置
     int no_local;//是否接收自己发布的消息:0-关闭 1-开启
@@ -126,8 +139,8 @@ typedef struct{
 
 #define PRODUCER_MAX_SIZE 2
 typedef struct{
-    int conn_index;
-    int channel_index;
+    int conn_index;     //连接：rabbitmqConnsInfo.conns[conn_index]
+    int channel_index;  //通道：rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index]
 
     int confirmMode;//0-无发布确认 1-启用发布确认
 
@@ -148,19 +161,25 @@ extern RabbitmqConfig_t rabbitmqConfigInfo;//配置信息
 
 extern connectionsInfo_t rabbitmqConnsInfo;//连接和通道信息 0-消费 1-生产
 
-extern RabbitmqExchange_t exchangeInfo[3];//交换机
+extern RabbitmqExchanges_t exchangesInfo;//交换机
 
-extern RabbitmqQueue_t queueInfo[2];//队列
+extern RabbitmqQueues_t queuesInfo;//队列
 
-extern RabbitmqBind_t bindsInfo[20];//绑定信息
+extern RabbitmqBinds_t bindsInfo;//绑定信息
 
 extern consumers_t consumersInfo;//消息消费者
 extern producers_t producersInfo;//消息生产者
 
-int rabbitmq_client_init();
+
+int rabbitmq_init_client();
+int rabbitmq_init_conns();
+void rabbitmq_login();
 
 
-
+//日志打印
+void vlog(FILE *fd,char *str,va_list args);
+void info(char *str,...);
+void warn(char *str,...);
 
 
 

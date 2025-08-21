@@ -20,11 +20,8 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d37117ee-6323-43db-931c-5f8935bd59a7" name="更改" comment="Rabbit-c完成基本demo,准备对消费者和生产者相关功能进行封装">
+    <list default="true" id="d37117ee-6323-43db-931c-5f8935bd59a7" name="更改" comment="rabbitmq的相关全局变量和数据结构的基本形式">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/demo/demo.c" beforeDir="false" afterPath="$PROJECT_DIR$/demo/demo.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rabbitmq笔记.txt" beforeDir="false" afterPath="$PROJECT_DIR$/rabbitmq笔记.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/consumer.c" beforeDir="false" afterPath="$PROJECT_DIR$/source/consumer.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/rabbitmq-c.c" beforeDir="false" afterPath="$PROJECT_DIR$/source/rabbitmq-c.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/rabbitmq-c.h" beforeDir="false" afterPath="$PROJECT_DIR$/source/rabbitmq-c.h" afterDir="false" />
     </list>
@@ -64,7 +61,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "CMake 应用程序.target.executor": "Debug",
+    "CMake 应用程序.target.executor": "Run",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
@@ -100,9 +97,9 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake 应用程序.target">
-    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
       </method>
     </configuration>
     <configuration name="target" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="demo" TARGET_NAME="target" CONFIG_NAME="Debug-GCC-ubuntu20.04" RUN_TARGET_PROJECT_NAME="demo" RUN_TARGET_NAME="target">
@@ -148,7 +145,8 @@
       <workItem from="1755509894239" duration="91000" />
       <workItem from="1755564287185" duration="5575000" />
       <workItem from="1755572814027" duration="18803000" />
-      <workItem from="1755653370458" duration="22444000" />
+      <workItem from="1755653370458" duration="22880000" />
+      <workItem from="1755737181774" duration="16310000" />
     </task>
     <task id="LOCAL-00001" summary="start">
       <option name="closed" value="true" />
@@ -206,7 +204,15 @@
       <option name="project" value="LOCAL" />
       <updated>1755596042739</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="rabbitmq的相关全局变量和数据结构的基本形式">
+      <option name="closed" value="true" />
+      <created>1755691762403</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1755691762403</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -245,7 +251,8 @@
     <MESSAGE value="Rabbit消费端例程" />
     <MESSAGE value="Rabbit考虑线程问题" />
     <MESSAGE value="Rabbit-c完成基本demo,准备对消费者和生产者相关功能进行封装" />
-    <option name="LAST_COMMIT_MESSAGE" value="Rabbit-c完成基本demo,准备对消费者和生产者相关功能进行封装" />
+    <MESSAGE value="rabbitmq的相关全局变量和数据结构的基本形式" />
+    <option name="LAST_COMMIT_MESSAGE" value="rabbitmq的相关全局变量和数据结构的基本形式" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -254,11 +261,6 @@
           <url>file://$PROJECT_DIR$/demo/demo.c</url>
           <line>158</line>
           <option name="timeStamp" value="1" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/source/rabbitmq-c.c</url>
-          <line>171</line>
-          <option name="timeStamp" value="4" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
