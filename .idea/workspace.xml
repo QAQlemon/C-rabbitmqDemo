@@ -20,10 +20,64 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d37117ee-6323-43db-931c-5f8935bd59a7" name="更改" comment="rabbitmq的相关全局变量和数据结构的基本形式">
+    <list default="true" id="d37117ee-6323-43db-931c-5f8935bd59a7" name="更改" comment="rabbitmq的函数结构初版">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/.cmake/api/v1/reply/cache-v2-b700ffc15ac0aff3ef50.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/.cmake/api/v1/reply/cmakeFiles-v1-1a1608b630c22b73d760.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/.cmake/api/v1/reply/cmakeFiles-v1-ec28f939b40fba7c652a.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/.cmake/api/v1/reply/codemodel-v2-53dfa2b751f7339f2ef8.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/.cmake/api/v1/reply/codemodel-v2-e5382e732792e22a4de5.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/.cmake/api/v1/reply/codemodel-v2-fd5d84bf805aa797f08c.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/.cmake/api/v1/reply/directory-.-Debug-f5ebdc15457944623624.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/.cmake/api/v1/reply/index-2025-08-14T05-20-27-0152.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/.cmake/api/v1/reply/index-2025-08-14T05-45-04-0451.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/.cmake/api/v1/reply/index-2025-08-14T05-46-50-0144.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/.cmake/api/v1/reply/index-2025-08-14T05-50-45-0865.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/.cmake/api/v1/reply/index-2025-08-18T07-57-35-0284.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/.cmake/api/v1/reply/target-target-Debug-131cdf5d60e67bbf1568.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/.cmake/api/v1/reply/target-target-Debug-79fbf6193b952ca50e57.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/.cmake/api/v1/reply/target-target-Debug-db6b6101a2b464832b8b.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/.cmake/api/v1/reply/toolchains-v1-99265b04de7ada3aac9e.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeCache.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/3.22.1/CMakeCCompiler.cmake" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/3.22.1/CMakeCXXCompiler.cmake" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/3.22.1/CMakeSystem.cmake" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/3.22.1/CompilerIdC/CMakeCCompilerId.c" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/3.22.1/CompilerIdCXX/CMakeCXXCompilerId.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/CMakeDirectoryInformation.cmake" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/CMakeOutput.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/Makefile.cmake" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/Makefile2" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/Progress/1" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/Progress/3" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/Progress/4" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/Progress/5" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/Progress/6" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/Progress/count.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/TargetDirectories.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/clion-Debug-GCC-ubuntu2004-log.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/clion-environment.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/cmake.check_cache" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/progress.marks" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/target.dir/DependInfo.cmake" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/target.dir/build.make" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/target.dir/cmake_clean.cmake" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/target.dir/compiler_depend.internal" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/target.dir/compiler_depend.make" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/target.dir/compiler_depend.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/target.dir/depend.make" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/target.dir/flags.make" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/target.dir/link.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/target.dir/progress.make" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/target.dir/source/rabbitmq-c.c.o.d" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/CMakeFiles/target.dir/source/utils.c.o.d" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/Testing/Temporary/LastTest.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004/cmake_install.cmake" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/source/rabbitmq-c.c" beforeDir="false" afterPath="$PROJECT_DIR$/source/rabbitmq-c.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/rabbitmq-c.h" beforeDir="false" afterPath="$PROJECT_DIR$/source/rabbitmq-c.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/source/utils.c" beforeDir="false" afterPath="$PROJECT_DIR$/source/utils.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/source/utils.h" beforeDir="false" afterPath="$PROJECT_DIR$/source/utils.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -61,7 +115,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "CMake 应用程序.target.executor": "Run",
+    "CMake 应用程序.target.executor": "Debug",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
@@ -97,9 +151,9 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake 应用程序.target">
-    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
-        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
     <configuration name="target" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="demo" TARGET_NAME="target" CONFIG_NAME="Debug-GCC-ubuntu20.04" RUN_TARGET_PROJECT_NAME="demo" RUN_TARGET_NAME="target">
@@ -146,7 +200,8 @@
       <workItem from="1755564287185" duration="5575000" />
       <workItem from="1755572814027" duration="18803000" />
       <workItem from="1755653370458" duration="22880000" />
-      <workItem from="1755737181774" duration="16310000" />
+      <workItem from="1755737181774" duration="16400000" />
+      <workItem from="1755823758700" duration="27493000" />
     </task>
     <task id="LOCAL-00001" summary="start">
       <option name="closed" value="true" />
@@ -212,7 +267,15 @@
       <option name="project" value="LOCAL" />
       <updated>1755691762403</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="rabbitmq的函数结构初版">
+      <option name="closed" value="true" />
+      <created>1755768793536</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1755768793536</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -252,18 +315,10 @@
     <MESSAGE value="Rabbit考虑线程问题" />
     <MESSAGE value="Rabbit-c完成基本demo,准备对消费者和生产者相关功能进行封装" />
     <MESSAGE value="rabbitmq的相关全局变量和数据结构的基本形式" />
-    <option name="LAST_COMMIT_MESSAGE" value="rabbitmq的相关全局变量和数据结构的基本形式" />
+    <MESSAGE value="rabbitmq的函数结构初版" />
+    <option name="LAST_COMMIT_MESSAGE" value="rabbitmq的函数结构初版" />
   </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/demo/demo.c</url>
-          <line>158</line>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
     <watches-manager>
       <configuration name="CMakeRunConfiguration">
         <watch expression="rabbitmqConfigInfo" />

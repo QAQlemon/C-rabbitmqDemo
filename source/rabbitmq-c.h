@@ -29,7 +29,8 @@
 #define ARGUMENT_QUEUE_08 "x-queue-leader-locator"      //配置队列的领导者（Leader）定位器，和集群相关
 #define ARGUMENT_QUEUE_09 ""
 
-//todo函数声明
+//别名
+typedef void *(*task_t) (void *) ;
 
 //结构体
 typedef struct {
@@ -41,8 +42,8 @@ typedef struct {
 #define CHANNEL_MAX_SIZE 3
 typedef struct{
 //    int conn_index;//连接索引
-    int num;//1-队列、交换机、绑定声明使用 2-生产者专用通道 3-消费者专用通道
-    int status;//标志位，是否已使用 0-未启用 1-已启用
+    int num;//通道号（1-65535）: a.队列、交换机、绑定声明使用 b.生产者专用通道 c.消费者专用通道
+    int status;//标志位: 0-未启用 1-已启用
 }channelEntity_t;
 typedef struct{
     int size;
@@ -51,7 +52,7 @@ typedef struct{
 
 #define CONNECTION_MAX_SIZE 2
 typedef struct{
-    int status;//0-未打开 1-已连接
+    int status;//0-未打开 1-已连接 2-已登录 3-通道已打开
     amqp_connection_state_t connState;//指针 amqp_new_connection()返回
     amqp_socket_t *socket;//amqp_tcp_socket_new()返回
     channelInfo_t channelsInfo;//不同线程使用不同通道
@@ -120,8 +121,10 @@ typedef struct {
 
 #define CONSUMER_MAX_SIZE 2
 typedef struct{
+    int index;          //用于线程快速查找消费者信息
     int conn_index;     //连接：rabbitmqConnsInfo.conns[conn_index]
     int channel_index;  //通道：rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index]
+    char *consumer_tag;
 
     //消息接收的全局设置
     int no_local;//是否接收自己发布的消息:0-关闭 1-开启
@@ -130,15 +133,16 @@ typedef struct{
 
     //线程句柄
     pthread_t thread_handle;
-    char *consumer_tag;
+    task_t task;
 }consumerEntity_t;
 typedef struct{
     int size;
     consumerEntity_t consumers[CONSUMER_MAX_SIZE];
 }consumers_t;
 
-#define PRODUCER_MAX_SIZE 2
+#define PRODUCER_MAX_SIZE 3
 typedef struct{
+    int index;          //用于线程快速查找生产者信息
     int conn_index;     //连接：rabbitmqConnsInfo.conns[conn_index]
     int channel_index;  //通道：rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index]
 
@@ -149,12 +153,19 @@ typedef struct{
 
     //线程句柄
     pthread_t thread_handle;
+    task_t task;
 }producerEntity_t_t;
 typedef struct{
     int size;
     producerEntity_t_t producers[PRODUCER_MAX_SIZE];
 }producers_t;
 
+
+typedef struct{
+    char *info;
+    int type;//1-生产者 2-消费者
+    int index;//下标
+}exitInfo_t;
 
 //全局变量
 extern RabbitmqConfig_t rabbitmqConfigInfo;//配置信息
@@ -167,13 +178,77 @@ extern RabbitmqQueues_t queuesInfo;//队列
 
 extern RabbitmqBinds_t bindsInfo;//绑定信息
 
+extern pthread_mutex_t log_mutex;
+extern pthread_mutex_t mutex;
+extern pthread_cond_t cond_start;
+extern pthread_cond_t cond_exit;
+//extern pthread_barrier_t barrier;
+extern exitInfo_t exitInfo;
+
+
 extern consumers_t consumersInfo;//消息消费者
 extern producers_t producersInfo;//消息生产者
 
+//todo check函数
+int rabbitmq_check_conn_index(int conn_index);
+int rabbitmq_check_channel_index(int conn_index,int channel_index);
 
-int rabbitmq_init_client();
+//todo reset函数 重置状态和NULL
+int rabbitmq_reset_channel(int conn_index,int channel_index);
+int rabbitmq_reset_channels(int conn_index);
+int rabbitmq_reset_conn(int conn_index);
+int rabbitmq_reset_conns();
+
+//todo close函数
+int rabbitmq_close_channel(int conn_index,int channel_index);
+int rabbitmq_close_channels(int conn_index);
+int rabbitmq_close_conn(int conn_index);
+int rabbitmq_close_conns();
+
+//todo init函数
+int rabbitmq_init_channel(int conn_index,int channel_index);
+int rabbitmq_init_channels(int conn_index);
+int rabbitmq_login_conn(amqp_connection_state_t conn);
+int rabbitmq_init_conn(int conn_index);
 int rabbitmq_init_conns();
-void rabbitmq_login();
+
+
+
+//todo start函数
+int rabbitmq_start_producer(int index);
+int rabbitmq_start_producers();
+
+int rabbitmq_start_consumer(int index);
+int rabbitmq_start_consumers();
+
+
+//todo task函数
+//下拉
+void *consumer_task_00(void *arg);//定时数据
+//上传
+void *producer_task_upload_device_data(void *arg);//采集设备数据
+void *producer_task_upload_fault_data(void *arg);//设备故障数据
+
+
+
+//todo parse解析消息
+//int message_parse(char *buffer,int size);
+
+//todo pack打包消息
+//int message_pack(char *buffer,int size);
+
+//todo handle函数
+int consumer_handle_message(const amqp_envelope_t *envelope);
+int producer_prepare_message(char *buffer,int size);
+
+
+
+
+//todo 客户端启动函数
+int rabbitmq_init_client();
+int rabbitmq_start_client();
+
+
 
 
 //日志打印
