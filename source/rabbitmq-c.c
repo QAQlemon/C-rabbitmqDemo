@@ -7,12 +7,14 @@
 
 pthread_mutex_t log_mutex=PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex;
-pthread_cond_t cond_start;
-pthread_cond_t cond_exit;
+volatile int thread_counts=0;
+volatile int work_status=0;//0-就绪 1-运行 2-异常退出
+pthread_cond_t cond_running;
+pthread_cond_t cond_stop;
 //pthread_barrier_t barrier;
 exitInfo_t exitInfo={
-    .type=0,
     .info=NULL,
+    .type=0,
     .index=0
 };
 
@@ -114,8 +116,15 @@ RabbitmqQueues_t queuesInfo={
             .auto_delete=0,
             //todo 指定死信交换机
             .args={
-                    {.type=0,.key=ARGUMENT_QUEUE_04,.value.str=""},
-                    {.type=0,.key=ARGUMENT_QUEUE_05,.value.str=""}
+                {.type=0,.key=ARGUMENT_QUEUE_00,.value.integer=1},
+                {.type=0,.key=ARGUMENT_QUEUE_01,.value.integer=1},
+                {.type=1,.key=ARGUMENT_QUEUE_02,.value.str=""},
+                {.type=0,.key=ARGUMENT_QUEUE_02,.value.integer=1},
+                {.type=1,.key=ARGUMENT_QUEUE_04,.value.str="deadLetterExchange"},
+                {.type=1,.key=ARGUMENT_QUEUE_05,.value.str="deadRoutingKeyExample"}
+//                {.type=0,.key=ARGUMENT_QUEUE_06,.value.str=},
+//                {.type=0,.key=ARGUMENT_QUEUE_07,.value.str=},
+//                {.type=0,.key=ARGUMENT_QUEUE_08,.value.str=},
             }
         },
         //todo 设备故障消息队列
@@ -127,8 +136,8 @@ RabbitmqQueues_t queuesInfo={
             .auto_delete=0,
             //todo 指定死信交换机
             .args={
-                    {.type=0,.key=ARGUMENT_QUEUE_04,.value.str=""},
-                    {.type=0,.key=ARGUMENT_QUEUE_05,.value.str=""}
+                {.type=0,.key=ARGUMENT_QUEUE_04,.value.str="deadLetterExchange"},
+                {.type=0,.key=ARGUMENT_QUEUE_05,.value.str="deadRoutingKeyExample"}
             }
         }
     }
@@ -197,32 +206,45 @@ producers_t producersInfo={
 
 };
 void vlog(FILE *fd,char *str,va_list args){
-    pthread_mutex_lock(&log_mutex);
+
     vfprintf(fd,str,args);
-    pthread_mutex_unlock(&log_mutex);
+
 }
 void info(char *str,...){
     va_list list;
+
+    pthread_mutex_lock(&log_mutex);
+
     va_start(list,str);
     vlog(stdout,str,list);
     fprintf(stdout,"\n");
     fflush(stdout);
     va_end(list);
+
+    pthread_mutex_unlock(&log_mutex);
 }
 void warn(char *str,...){
     va_list list;
+
+    pthread_mutex_lock(&log_mutex);
+
     va_start(list,str);
     vlog(stderr,str,list);
     fprintf(stderr,"\n");
     fflush(stderr);
     va_end(list);
+
+    pthread_mutex_unlock(&log_mutex);
 }
 
 
 void main(){
+    //todo 设置缓冲类型 无缓冲
+    setbuf(stdout, NULL);
+
     //todo 初始化锁、条件变量、barrier
     pthread_mutex_init(&mutex,NULL);
-    pthread_cond_init(&cond_exit,NULL);
+    pthread_cond_init(&cond_stop, NULL);
 //    pthread_barrier_init(&barrier,NULL,producersInfo.size+consumersInfo.size);
 
     //todo 启动任务
@@ -233,15 +255,31 @@ void main(){
 
     //todo 如果某个线程出现异常并结束
     {
-//        sleep(1);
+        warn("main:get lock");
         pthread_mutex_lock(&mutex);
-        pthread_cond_broadcast(&cond_start);
-        warn("main:broadcast started");
+        warn("main:locked");
 
-        pthread_cond_wait(&cond_exit,&mutex);
-        warn("main:notified");
-        warn("exitInfo:type=%d,index=%d,info=%s",exitInfo.type,exitInfo.index,exitInfo.info);
+        //todo 修改共享数据
+        work_status=1;
+        warn("main:broadcast started");
+        pthread_cond_broadcast(&cond_running);
+
+        while(work_status != 2) {
+            warn("main:wait");
+            pthread_cond_wait(&cond_stop, &mutex);
+            warn("main:notified %d", work_status);
+        }
+
+        //todo 修改共享数据
+        work_status=3;
+
+        warn("main:release lock");
         pthread_mutex_unlock(&mutex);
+        warn("main:unlocked");
+
+        warn("exitInfo:type=%d,index=%d,info=%s",
+             exitInfo.type,exitInfo.index,exitInfo.info
+        );
     }
 
 
@@ -286,6 +324,64 @@ int rabbitmq_check_channel_index(int conn_index,int channel_index){
     }
 
 }
+int rabbitmq_check_queue(int queue_index){
+    rabbitmqConnsInfo.conns[0].connState;
+    rabbitmqConnsInfo.conns[0].channelsInfo.channels[0].num;
+
+
+    RabbitmqQueueEntity_t queue = queuesInfo.queues[queue_index];
+
+    amqp_bytes_t queue_name = amqp_cstring_bytes(queue.name);
+    queue.passive;
+    queue.durability;
+    queue.exclusive;
+    queue.auto_delete;
+    //解析拓展参数
+    amqp_table_entry_t kvs[9];
+    amqp_table_t xargs;
+    xargs.entries=kvs;
+    int i=0;
+    while(queue.args[i].key != NULL){
+        //todo key解析
+        xargs.entries[i].key = amqp_cstring_bytes(queue.args[i].key);
+
+
+        //todo value整数解析
+        if(queue.args[i].type==0){
+            xargs.entries->value.kind=AMQP_FIELD_KIND_I32;
+            xargs.entries->value.value.bytes = amqp_cstring_bytes(queue.args[i].value.str);
+        }
+        //todo value字符串解析
+        else if(queue.args[i].type==1){
+            xargs.entries->value.kind=AMQP_FIELD_KIND_BYTES;
+            xargs.entries->value.value.bytes = amqp_cstring_bytes(queue.args[i].value.str);
+        }
+        i++;
+    }
+    xargs.num_entries=i;
+    
+    xargs.num_entries=;
+
+    
+//    queuesInfo.queues[queue_index]
+    amqp_queue_declare_ok_t *r = amqp_queue_declare(
+            ,//连接对象
+            1,//channel
+            amqp_cstring_bytes("myQueue"),//队列名称
+            0,//passive 0-队列不存在会自动创建，对了存在检查参数是否匹配，不匹配返回错误
+            0,//durable     队列元数据持久化，不保证数据不丢失
+            0,//exclusive
+            0,//auto_delete 无消费者在自动删除
+            amqp_empty_table//额外参数 (通常用amqp_empty_table)
+    );
+    
+    
+}
+int rabbitmq_check_exchange(int exchange_index){
+    
+}
+
+
 
 
 //todo reset函数 重置状态和NULL
@@ -346,7 +442,7 @@ int rabbitmq_reset_conn(int conn_index){
 
     }
 }
-
+//重置所有连接
 int rabbitmq_reset_conns(){
     int size = rabbitmqConnsInfo.size;
     if(size > CONNECTION_MAX_SIZE){
@@ -702,81 +798,133 @@ int rabbitmq_start_consumers(){
 //定时数据
 void *consumer_task_00(void *arg){
     int consumer_index=*(int *)arg;
-
-//    sleep(1);
-
     {
-        pthread_mutex_lock(&mutex);
+        while(1){
+            //todo 0-启动等待状态
+            if(work_status==0){
+                pthread_mutex_lock(&mutex);
+                pthread_cond_wait(&cond_running, &mutex);
+                pthread_mutex_unlock(&mutex);
+            }
 
-        info("thread consumer[%d]:wait start",consumer_index);
-        pthread_cond_wait(&cond_start,&mutex);
-        info("thread consumer[%d]:run",consumer_index);
+            //todo 1-运行状态
+            else if(work_status==1){
 
-        //todo 修改数据
-        exitInfo.type=0;
-        exitInfo.info="thread consumer exit:定时数据";
-        exitInfo.index=consumer_index;
+                //todo 业务处理
 
-        info("thread consumer[%d]:signal",consumer_index);
-        pthread_cond_signal(&cond_exit);
+                //todo 处理出错或其它会导致客户端状态变为 2-stop
+                pthread_mutex_lock(&mutex);
+                work_status=2;
+                pthread_cond_broadcast(&cond_stop);
+                pthread_mutex_unlock(&mutex);
+            }
 
-        pthread_mutex_unlock(&mutex);
+            //todo 2-停止状态（子线程检测到主线程需要终止）
+            else if(work_status==2){
+                //todo 停止前进行资源释放
+                
+                //todo 记录退出信息
+                info("thread consumer[%d]:stopped",consumer_index);
+                consumersInfo.consumers[consumer_index].exitInfo.info="";
+                consumersInfo.consumers[consumer_index].exitInfo.type=0;
+                consumersInfo.consumers[consumer_index].exitInfo.index=consumer_index;
+                
+                //todo 记录线程数
+                pthread_mutex_lock(&mutex);
+                thread_counts--;
+                pthread_cond_broadcast(&cond_terminated);//通知主线程
+                pthread_mutex_unlock(&mutex);
+                break;
+            }
+        }
     }
-
-
 }
 //上传
 //采集设备数据
 void *producer_task_upload_device_data(void *arg){
 
     int producer_index=*(int *)arg;
-
-//    info("thread producer[%d]:sleep...",producer_index);
-//    sleep(1000);
-//    info("thread producer[%d]:wake up",producer_index);
-
     {
-        pthread_mutex_lock(&mutex);
+        while(1){
 
-        info("thread producer[%d]: wait start",producer_index);
-        pthread_cond_wait(&cond_start,&mutex);
-        info("thread producer[%d]: run",producer_index);
+            //todo 0-启动等待状态
+            if(work_status==0){
+                pthread_mutex_lock(&mutex);
+                pthread_cond_wait(&cond_running, &mutex);
+                pthread_mutex_unlock(&mutex);
+            }
 
-        exitInfo.type=1;
-        exitInfo.info="thread producer exit:采集设备数据";
-        exitInfo.index=producer_index;
+            //todo 1-运行状态
+            else if(work_status==1){
+                //todo 业务处理
 
+                //todo 处理出错或其它会导致客户端状态变为 2-stop
+                pthread_mutex_lock(&mutex);
+                work_status=2;
+                pthread_cond_broadcast(&cond_stop);
+                pthread_mutex_unlock(&mutex);
+            }
 
-        info("thread producer[%d]:signal",producer_index);
-        pthread_cond_signal(&cond_exit);
+            //todo 2-停止状态（子线程检测到主线程需要终止）
+            else if(work_status==2){
+                //todo 停止前进行资源释放
 
-        pthread_mutex_unlock(&mutex);
+                //todo 记录退出信息
+                info("thread producers[%d]:stopped",producer_index);
+                producersInfo.producers[producer_index].exitInfo.info = "";
+
+                //todo 记录线程数
+                pthread_mutex_lock(&mutex);
+                thread_counts--;
+                pthread_cond_broadcast(&cond_terminated);//通知主线程
+                pthread_mutex_unlock(&mutex);
+                break;
+            }
+        }
     }
+
 }
 //设备故障数据
 void *producer_task_upload_fault_data(void *arg){
     int producer_index=*(int *)arg;
-
-
-//    info("thread producer[%d]:sleep...",producer_index);
-//    sleep(1000);
-//    info("thread producer[%d]:wake up",producer_index);
-
     {
-        pthread_mutex_lock(&mutex);
+        while(1) {
 
-        info("thread producer[%d]: wait start",producer_index);
-        pthread_cond_wait(&cond_start,&mutex);
-        info("thread producer[%d]: run",producer_index);
+            //todo 0-启动等待状态
+            if (work_status == 0) {
+                pthread_mutex_lock(&mutex);
+                pthread_cond_wait(&cond_running, &mutex);
+                pthread_mutex_unlock(&mutex);
+            }
 
-        exitInfo.type=1;
-        exitInfo.info="thread producer exit:设备故障数据";
-        exitInfo.index=producer_index;
+            //todo 1-运行状态
+            else if (work_status == 1) {
 
-        info("thread producer[%d]:signal",producer_index);
-        pthread_cond_signal(&cond_exit);
+                //todo 业务处理
 
-        pthread_mutex_unlock(&mutex);
+                //todo 处理出错或其它会导致客户端状态变为 2-stop
+                pthread_mutex_lock(&mutex);
+                work_status = 2;
+                pthread_cond_broadcast(&cond_stop);
+                pthread_mutex_unlock(&mutex);
+            }
+
+            //todo 2-停止状态（子线程检测到主线程需要终止）
+            else if (work_status == 2) {
+                //todo 停止前进行资源释放
+
+                //todo 记录退出信息
+                info("thread producer[%d]:stopped", producer_index);
+                producersInfo.producers[producer_index].exitInfo.info = "";
+
+                //todo 记录线程数
+                pthread_mutex_lock(&mutex);
+                thread_counts--;
+                pthread_cond_broadcast(&cond_terminated);//通知主线程
+                pthread_mutex_unlock(&mutex);
+                break;
+            }
+        }
     }
 }
 
@@ -789,14 +937,18 @@ void *producer_task_upload_fault_data(void *arg){
 
 //todo 客户端启动函数
 int rabbitmq_init_client(){
-    //todo 初始化连接和通道
+    //todo 初始化连接和通道(失败能自动释放连接资源)
     if(rabbitmq_init_conns()==0){
         return 0;
     }
     //todo 交换机检查
-
+    for (int i = 0; i < exchangesInfo.size; ++i) {
+        rabbitmq_check_exchange(i);
+    }
     //todo 队列检查
-
+    for (int i = 0; i < queuesInfo.size; ++i) {
+        rabbitmq_check_queue(i);
+    }
     return 1;
 }
 
@@ -805,9 +957,12 @@ int rabbitmq_start_client(){
         warn("rabbitmq client:init fail",stderr);
     }else{
         int flag=1;
+        work_status=0;//0-就绪 1-运行 2-停止 3-终止
+        thread_counts = producersInfo.size + consumersInfo.size;
+
         //todo 初始化条件变量
         pthread_mutex_init(&mutex,NULL);
-        pthread_cond_init(&cond_exit,NULL);
+        pthread_cond_init(&cond_stop, NULL);
 
         //todo 启动生产者
         flag&=rabbitmq_start_consumers();
@@ -818,27 +973,28 @@ int rabbitmq_start_client(){
         if(flag==1){
             //todo 如果某个线程出现异常并结束
             pthread_mutex_lock(&mutex);
-            pthread_cond_wait(&cond_exit,&mutex);
+
+            //todo 修改共享数据 1-运行
+            work_status=1;
+            pthread_cond_broadcast(&cond_running);
+            while(work_status != 2) {
+                pthread_cond_wait(&cond_stop, &mutex);
+            }
+
 
             //todo 关闭所有线程
-            warn("close all");
+            warn("main: close all threads");
+            while(thread_counts!=0){
+                pthread_cond_wait(&cond_terminated,&mutex);
+            }
 
+            //todo 修改共享数据 3-终止
+            work_status=3;
             pthread_mutex_unlock(&mutex);
+            
         }
         //todo 释放锁和条件变量资源
-        pthread_cond_destroy(&cond_exit);
+        pthread_cond_destroy(&cond_stop);
         pthread_mutex_destroy(&mutex);
     }
-}
-
-
-//todo 生产者
-void *producer(){
-
-    return NULL;
-}
-
-//todo 消费者
-void *consumer(){
-    return NULL;
 }

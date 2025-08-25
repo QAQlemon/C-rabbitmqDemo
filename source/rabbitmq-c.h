@@ -64,7 +64,7 @@ typedef struct{
 
 #define QUEUE_MAX_SIZE 3
 typedef struct {
-    int type;//0-整数 1-字符串
+    int type;//0-整数 1-字符串 3-布尔
     char *key;
     union {
         int integer;
@@ -117,7 +117,11 @@ typedef struct {
     RabbitmqBindEntity_t binds[BIND_MAX_SIZE];
 }RabbitmqBinds_t;//绑定
 
-
+typedef struct{
+    char *info;
+    int type;//1-生产者 2-消费者
+    int index;//下标
+}exitInfo_t;
 
 #define CONSUMER_MAX_SIZE 2
 typedef struct{
@@ -134,6 +138,7 @@ typedef struct{
     //线程句柄
     pthread_t thread_handle;
     task_t task;
+    exitInfo_t exitInfo;
 }consumerEntity_t;
 typedef struct{
     int size;
@@ -154,6 +159,7 @@ typedef struct{
     //线程句柄
     pthread_t thread_handle;
     task_t task;
+    exitInfo_t exitInfo;
 }producerEntity_t_t;
 typedef struct{
     int size;
@@ -161,11 +167,7 @@ typedef struct{
 }producers_t;
 
 
-typedef struct{
-    char *info;
-    int type;//1-生产者 2-消费者
-    int index;//下标
-}exitInfo_t;
+
 
 //全局变量
 extern RabbitmqConfig_t rabbitmqConfigInfo;//配置信息
@@ -178,10 +180,15 @@ extern RabbitmqQueues_t queuesInfo;//队列
 
 extern RabbitmqBinds_t bindsInfo;//绑定信息
 
+
+
 extern pthread_mutex_t log_mutex;
 extern pthread_mutex_t mutex;
-extern pthread_cond_t cond_start;
-extern pthread_cond_t cond_exit;
+extern volatile int thread_counts;
+extern volatile int work_status;
+extern pthread_cond_t cond_running;
+extern pthread_cond_t cond_stop;
+extern pthread_cond_t cond_terminated;
 //extern pthread_barrier_t barrier;
 extern exitInfo_t exitInfo;
 
@@ -192,6 +199,9 @@ extern producers_t producersInfo;//消息生产者
 //todo check函数
 int rabbitmq_check_conn_index(int conn_index);
 int rabbitmq_check_channel_index(int conn_index,int channel_index);
+int rabbitmq_check_queue(int queue_index);
+int rabbitmq_check_exchange(int exchange_index);
+
 
 //todo reset函数 重置状态和NULL
 int rabbitmq_reset_channel(int conn_index,int channel_index);
