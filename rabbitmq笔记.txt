@@ -59,3 +59,36 @@ rabbitmq
             手动确认
 
 
+main<-A
+
+条件A不成立
+
+main{
+    lock
+
+    while(条件A不成立){
+        con1.wait
+    }
+
+    unlock
+}
+A{
+    lock
+    con1.signal
+    修改条件A：成立
+
+    unlock
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

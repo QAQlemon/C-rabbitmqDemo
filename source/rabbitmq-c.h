@@ -185,10 +185,11 @@ extern RabbitmqBinds_t bindsInfo;//绑定信息
 extern pthread_mutex_t log_mutex;
 extern pthread_mutex_t mutex;
 extern volatile int thread_counts;
-extern volatile int work_status;
-extern pthread_cond_t cond_running;
-extern pthread_cond_t cond_stop;
-extern pthread_cond_t cond_terminated;
+extern volatile int work_status;//0-ready就绪 1-running运行 2-stop停止 3-exit 4-terminated
+extern pthread_cond_t cond_running;//主->子
+extern pthread_cond_t cond_stop;//子->主
+extern pthread_cond_t cond_exit;//子->主
+extern pthread_cond_t cond_terminated;//子->主
 //extern pthread_barrier_t barrier;
 extern exitInfo_t exitInfo;
 
@@ -238,8 +239,12 @@ void *consumer_task_00(void *arg);//定时数据
 //上传
 void *producer_task_upload_device_data(void *arg);//采集设备数据
 void *producer_task_upload_fault_data(void *arg);//设备故障数据
-
-
+//线程就绪
+void notify_task_run();
+//线程停止
+void notify_task_stop();
+//
+void notify_main_terminated();
 
 //todo parse解析消息
 //int message_parse(char *buffer,int size);
@@ -250,7 +255,6 @@ void *producer_task_upload_fault_data(void *arg);//设备故障数据
 //todo handle函数
 int consumer_handle_message(const amqp_envelope_t *envelope);
 int producer_prepare_message(char *buffer,int size);
-
 
 
 
