@@ -200,7 +200,7 @@ extern pthread_cond_t cond_exit;//主->子
 
 //extern exitInfo_t exitInfo;
 
-
+//todo 目前一个消费者对应一个线程处理一个队列的消息 后续考虑扩展一个队列由多个消费者线程处理
 extern consumers_t consumersInfo;//消息消费者
 extern producers_t producersInfo;//消息生产者
 
@@ -209,7 +209,7 @@ int rabbitmq_check_conn_index(int conn_index);
 int rabbitmq_check_channel_index(int conn_index,int channel_index);
 int rabbitmq_check_queue(int queue_index);
 int rabbitmq_check_exchange(int exchange_index);
-
+int rabbitmq_check_bind(int bind_index);
 
 //todo reset函数 重置状态和NULL
 int rabbitmq_reset_channel(int conn_index,int channel_index);

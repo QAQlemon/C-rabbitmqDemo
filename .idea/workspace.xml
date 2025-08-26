@@ -25,6 +25,8 @@
   <component name="ChangeListManager">
     <list default="true" id="d37117ee-6323-43db-931c-5f8935bd59a7" name="更改" comment="初步完成主线程对线程资源的释放，当main主线程检测到有一个子线程退出后，将通知所有线程进行停止操作，并组织资源释放">
       <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/other.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/other.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/main.c" beforeDir="false" afterPath="$PROJECT_DIR$/source/main.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/rabbitmq-c.c" beforeDir="false" afterPath="$PROJECT_DIR$/source/rabbitmq-c.c" afterDir="false" />
@@ -59,14 +61,13 @@
   &quot;associatedIndex&quot;: 2
 }</component>
   <component name="ProjectId" id="30zH5sSlgIOv8IRziroFOVBejMf" />
-  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "CMake 应用程序.target.executor": "Debug",
+    "CMake 应用程序.target.executor": "Run",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
@@ -87,7 +88,7 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "CMakeSettings",
+    "settings.editor.selected.configurable": "web.server",
     "structure.view.defaults.are.configured": "true",
     "vue.rearranger.settings.migration": "true"
   }
@@ -155,6 +156,8 @@
       <workItem from="1756122675964" duration="12113000" />
       <workItem from="1756193434239" duration="4125000" />
       <workItem from="1756199181018" duration="1490000" />
+      <workItem from="1756205811878" duration="1700000" />
+      <workItem from="1756207536080" duration="2893000" />
     </task>
     <task id="LOCAL-00001" summary="start">
       <option name="closed" value="true" />

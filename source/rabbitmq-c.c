@@ -297,6 +297,11 @@ int rabbitmq_check_channel_index(int conn_index,int channel_index){
 
 }
 int rabbitmq_check_queue(int queue_index){
+    if(queue_index<0 || queue_index>queuesInfo.size){
+        warn("queue check:fail,queue_index=%d",queue_index);
+        return 0;
+    }
+
     //todo 连接和通道
     amqp_connection_state_t connState = rabbitmqConnsInfo.conns[0].connState;
     int channel_num = rabbitmqConnsInfo.conns[0].channelsInfo.channels[0].num;
@@ -352,6 +357,11 @@ int rabbitmq_check_queue(int queue_index){
     
 }
 int rabbitmq_check_exchange(int exchange_index){
+    if(exchange_index<0 || exchange_index>exchangesInfo.size){
+        warn("exchange check:fail,exchange_index=%d",exchange_index);
+        return 0;
+    }
+
     //todo 连接和通道
     amqp_connection_state_t connState = rabbitmqConnsInfo.conns[0].connState;
     int channel_num = rabbitmqConnsInfo.conns[0].channelsInfo.channels[0].num;
@@ -375,7 +385,6 @@ int rabbitmq_check_exchange(int exchange_index){
         xargs=amqp_empty_table;
     }
 
-
     //todo 检测
     amqp_exchange_declare(
             connState,
@@ -390,7 +399,38 @@ int rabbitmq_check_exchange(int exchange_index){
     );
     return die_on_amqp_error(amqp_get_rpc_reply(connState),"check exchange fail")==1?0:1;
 }
+int rabbitmq_check_bind(int bind_index){
+    if(bind_index<0 || bind_index>bindsInfo.size){
+        warn("bind check:fail,bind_index=%d",bind_index);
+        return 0;
+    }
+    RabbitmqBindEntity_t bind = bindsInfo.binds[bind_index];
+    if(rabbitmq_check_exchange(bind.exchange_index)==0){
+        warn("bind check: fail ,exchange=%d",bind.exchange_index);
+        return 0;
+    }
+    if(rabbitmq_check_queue(bind.queue_index)==0){
+        warn("bind check: fail ,queue=%d",bind.queue_index);
+        return 0;
+    }
+    //todo 连接和通道
+    amqp_connection_state_t connState = rabbitmqConnsInfo.conns[0].connState;
+    int channel_num = rabbitmqConnsInfo.conns[0].channelsInfo.channels[0].num;
+    amqp_bytes_t queue_name = amqp_cstring_bytes(queuesInfo.queues[bind.queue_index].name);
+    amqp_bytes_t exchange_name = amqp_cstring_bytes(exchangesInfo.exchanges[bind.exchange_index].name);
+    amqp_bytes_t routingKey = amqp_cstring_bytes(bind.routingKey);
 
+    //todo 绑定
+    amqp_queue_bind_ok_t *pT = amqp_queue_bind(
+            connState,
+            channel_num,              //channel
+            queue_name,      //queue
+            exchange_name, //exchange
+            routingKey,  //bindingkey
+            amqp_empty_table
+    );
+    return die_on_amqp_error(amqp_get_rpc_reply(connState), "Binding queue" )==1?0:1;
+}
 
 
 
@@ -819,7 +859,8 @@ void *consumer_task_00(void *arg){
             if(work_status==1){
                 //todo 业务处理
                 info("thread consumer[%d]: running",consumer_index);
-                //todo 处理出错或其它会导致客户端状态变为 2-stop
+
+                //todo 通知 线程已停止
                 notify_task_stop();
                 break;
             }
@@ -983,6 +1024,9 @@ int rabbitmq_init_client(){
                 break;
             }
         }
+        //todo 绑定关系检查
+
+
         return flag;
     }
 
