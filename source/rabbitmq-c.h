@@ -118,9 +118,10 @@ typedef struct {
 }RabbitmqBinds_t;//绑定
 
 typedef struct{
-    char *info;
     int type;//1-生产者 2-消费者
     int index;//下标
+    int code;//枚举 待完善
+    char *info;//推出信息
 }exitInfo_t;
 
 #define CONSUMER_MAX_SIZE 2
@@ -186,12 +187,14 @@ extern pthread_mutex_t log_mutex;
 extern pthread_mutex_t mutex;
 extern volatile int thread_counts;
 extern volatile int work_status;//0-ready就绪 1-running运行 2-stop停止 3-exit 4-terminated
-extern pthread_cond_t cond_running;//主->子
+extern volatile int flag_running;
+extern pthread_cond_t cond_running;//子->主
+extern volatile int flag_stop;
 extern pthread_cond_t cond_stop;//子->主
-extern pthread_cond_t cond_exit;//子->主
-extern pthread_cond_t cond_terminated;//子->主
-//extern pthread_barrier_t barrier;
-extern exitInfo_t exitInfo;
+extern volatile int flag_exit;
+extern pthread_cond_t cond_exit;//主->子
+
+//extern exitInfo_t exitInfo;
 
 
 extern consumers_t consumersInfo;//消息消费者
@@ -243,8 +246,9 @@ void *producer_task_upload_fault_data(void *arg);//设备故障数据
 void notify_task_run();
 //线程停止
 void notify_task_stop();
-//
-void notify_main_terminated();
+//线程退出
+void notify_task_exit();
+
 
 //todo parse解析消息
 //int message_parse(char *buffer,int size);
@@ -263,8 +267,8 @@ int rabbitmq_init_client();
 int rabbitmq_start_client();
 
 
-
-
+//todo 打印线程退出时记录的信息
+void log_threads_exitInfo();
 //日志打印
 void vlog(FILE *fd,char *str,va_list args);
 void info(char *str,...);

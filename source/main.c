@@ -8,8 +8,6 @@ void main(){
     pthread_cond_init(&cond_running, NULL);
     pthread_cond_init(&cond_stop, NULL);
     pthread_cond_init(&cond_exit,NULL);
-    pthread_cond_init(&cond_terminated, NULL);
-//    pthread_barrier_init(&barrier,NULL,producersInfo.size+consumersInfo.size);
 
     //todo 启动任务
     rabbitmq_start_consumers();
@@ -19,49 +17,53 @@ void main(){
 
     //todo 如果某个线程出现异常并结束
     {
-        warn("main:get lock");
+        warn("main: get lock");
         pthread_mutex_lock(&mutex);
-        warn("main:locked");
+        warn("main: locked");
 
         work_status=0;
         //todo 等待 运行
-        while(work_status==0){
-
+        while(flag_running!=1){
             warn("main: wait cond_running,work_status=%d",work_status);
             pthread_cond_wait(&cond_running, &mutex);
         }
         warn("main: 1");
+        work_status=1;
 
         //todo 等待 stop
-        while(work_status==1){
+        while(flag_stop!=1){
             warn("main: wait cond_stop,work_status=%d",work_status);
             pthread_cond_wait(&cond_stop,&mutex);
         }
         warn("main: 2");
+        work_status=2;
 
-        warn("main:close all threads,work_status=%d",work_status);
+        warn("main: close all threads,work_status=%d",work_status);
 
-        //todo 通知 子线程结束任务 exit
-        work_status=3;
-        warn("main: signal cond_exit");
-        pthread_cond_broadcast(&cond_exit);
-
-        //todo 等待 terminated
-        while(work_status==3){
-            warn("main: wait cond_terminated,work_status=%d",work_status);
-            pthread_cond_wait(&cond_terminated,&mutex);
+        //todo 等待 所有子线程结束任务 exit
+        while(flag_exit!=1){
+            warn("main: wait cond_exit,work_status=%d",work_status);
+            pthread_cond_wait(&cond_exit,&mutex);
         }
+        warn("main: 3");
+        work_status=3;
 
-        warn("main:release lock,work_status=%d",work_status);
+//        //todo 等待 terminated
+//        while(work_status==3){
+//            warn("main: wait cond_terminated,work_status=%d",work_status);
+//            pthread_cond_wait(&cond_terminated,&mutex);
+//        }
+
+        warn("main: release lock,work_status=%d",work_status);
         pthread_mutex_unlock(&mutex);
-        warn("main:unlocked,work_status=%d",work_status);
+        warn("main: unlocked,work_status=%d",work_status);
 
 
-        warn("exitInfo:type=%d,index=%d,info=%s",
-             exitInfo.type,exitInfo.index,exitInfo.info
-        );
+        //todo 打印退出信息
+        log_threads_exitInfo();
 
     }
-
-
+    //todo 释放锁和条件变量资源
+    pthread_cond_destroy(&cond_stop);
+    pthread_mutex_destroy(&mutex);
 }

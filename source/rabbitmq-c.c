@@ -9,16 +9,18 @@ pthread_mutex_t log_mutex=PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex;
 volatile int thread_counts=0;
 volatile int work_status=0;//0-ready就绪 1-running运行 2-stop停止 3-exit 4-terminated
+volatile int flag_running=0;
 pthread_cond_t cond_running;
+volatile int flag_stop=0;
 pthread_cond_t cond_stop;
-pthread_cond_t cond_terminated;
+volatile int flag_exit=0;
 pthread_cond_t cond_exit;
-//pthread_barrier_t barrier;
-exitInfo_t exitInfo={
-    .info=NULL,
-    .type=0,
-    .index=0
-};
+
+//exitInfo_t exitInfo={
+//    .info=NULL,
+//    .type=0,
+//    .index=0
+//};
 
 
 RabbitmqConfig_t rabbitmqConfigInfo={
@@ -207,6 +209,19 @@ producers_t producersInfo={
     },
 
 };
+void log_threads_exitInfo(){
+    info("========================(exitInfo)==========================");
+    //todo 生产者
+    for (int i = 0; i < producersInfo.size; ++i) {
+        info(producersInfo.producers[i].exitInfo.info,i);
+    }
+
+    //todo 消费者
+    for (int i = 0; i < consumersInfo.size; ++i) {
+        info(consumersInfo.consumers[i].exitInfo.info,i);
+    }
+}
+
 void vlog(FILE *fd,char *str,va_list args){
 
     vfprintf(fd,str,args);
@@ -753,22 +768,19 @@ void *consumer_task_00(void *arg){
     notify_task_run();
 
     {
-        //todo 运行
-        while(work_status==1){
-            //todo 1-运行状态
-
-            //todo 业务处理
-
-            //todo 处理出错或其它会导致客户端状态变为 2-stop
-            notify_task_stop();
-            break;
-        }
-
-        //todo 等待 退出通知 3-exit
-        while(work_status==2){
-            pthread_mutex_lock(&mutex);
-            pthread_cond_wait(&cond_exit,&mutex);
-            pthread_mutex_unlock(&mutex);
+        while(1){
+            //todo 运行
+            if(work_status==1){
+                //todo 业务处理
+                info("thread consumer[%d]: running",consumer_index);
+                //todo 处理出错或其它会导致客户端状态变为 2-stop
+                notify_task_stop();
+                break;
+            }
+            else if(work_status==2){
+                info("thread consumer[%d]:stopped",consumer_index);
+                break;
+            }
         }
 
         //todo 退出前处理
@@ -776,14 +788,12 @@ void *consumer_task_00(void *arg){
             //todo 停止前进行资源释放
 
             //todo 记录退出信息
-            info("thread consumer[%d]:stopped,work_status=%d",consumer_index,work_status);
-            consumersInfo.consumers[consumer_index].exitInfo.info="from consumer";
-            consumersInfo.consumers[consumer_index].exitInfo.type=0;
-            consumersInfo.consumers[consumer_index].exitInfo.index=consumer_index;
+            info("thread consumer[%d]: exit,work_status=%d",consumer_index,work_status);
+            consumersInfo.consumers[consumer_index].exitInfo.info="consumer[%d]: exited!";
         }
 
         //todo 通知任务已全部结束
-        notify_main_terminated();
+        notify_task_exit();
 
     }
 }
@@ -796,37 +806,34 @@ void *producer_task_upload_device_data(void *arg){
     //todo 通知 线程已就绪
     notify_task_run();
     {
-        //todo 运行
-        while(work_status==1){
-            //todo 1-运行状态
+        while(1){
+            //todo 运行
+            if(work_status==1){
+                //todo 业务处理
+//                info("thread producer[%d]: running",producer_index);
 
-            //todo 业务处理
+                //todo 处理出错或其它会导致客户端状态变为 2-stop
+//                notify_task_stop();
+//                break;
+            }
+            else if(work_status==2){
+                info("thread producer[%d]: stopped",producer_index);
 
-            //todo 处理出错或其它会导致客户端状态变为 2-stop
-            notify_task_stop();
-            break;
+                break;
+            }
         }
-
-        //todo 等待 退出通知 3-exit
-        while(work_status==2){
-            pthread_mutex_lock(&mutex);
-            pthread_cond_wait(&cond_exit,&mutex);
-            pthread_mutex_unlock(&mutex);
-        }
-
         //todo 推出前处理
         {
             //todo 停止前进行资源释放
 
             //todo 记录退出信息
-            info("thread producer[%d]: stopped,work_status=%d",producer_index,work_status);
-            producersInfo.producers[producer_index].exitInfo.info="from producer";
-            producersInfo.producers[producer_index].exitInfo.type=1;
-            producersInfo.producers[producer_index].exitInfo.index=producer_index;
+            info("thread producer[%d]: exit,work_status=%d",producer_index,work_status);
+            producersInfo.producers[producer_index].exitInfo.info="producer[%d]: exited!";
+
         }
 
         //todo 通知任务已全部结束
-        notify_main_terminated();
+        notify_task_exit();
 
     }
 
@@ -838,80 +845,69 @@ void *producer_task_upload_fault_data(void *arg){
     //todo 通知 线程已就绪
     notify_task_run();
     {
-        //todo 运行
-        while(work_status==1){
-            //todo 1-运行状态
+        while(1){
+            //todo 运行
+            if(work_status==1){
+//                info("thread producer[%d]: running",producer_index);
+                //todo 业务处理
 
-            //todo 业务处理
-
-            //todo 处理出错或其它会导致客户端状态变为 2-stop
-            notify_task_stop();
-            break;
+                //todo 处理出错或其它会导致客户端状态变为 2-stop
+//                notify_task_stop();
+//                break;
+            }
+            else if(work_status==2){
+                info("thread producer[%d]: stopped",producer_index);
+                break;
+            }
         }
-
-        //todo 等待 退出通知 3-exit
-        while(work_status==2){
-            pthread_mutex_lock(&mutex);
-            pthread_cond_wait(&cond_exit,&mutex);
-            pthread_mutex_unlock(&mutex);
-        }
-
-        //todo 推出前处理
+        //todo 退出前处理
         {
             //todo 停止前进行资源释放
 
             //todo 记录退出信息
-            info("thread producer[%d]: stopped,work_status=%d",producer_index,work_status);
-            producersInfo.producers[producer_index].exitInfo.info="from producer";
-            producersInfo.producers[producer_index].exitInfo.type=1;
-            producersInfo.producers[producer_index].exitInfo.index=producer_index;
+            info("thread producer[%d]: exit,work_status=%d",producer_index,work_status);
+            producersInfo.producers[producer_index].exitInfo.info="producer[%d]: exited!";
         }
 
-        //todo 通知任务已全部结束
-        notify_main_terminated();
-
+        //todo 等待 退出通知 3-exit
+        notify_task_exit();
     }
 }
 
 void notify_task_run(){
-//    sleep(3);
     //todo 通知 线程已就绪
-//    if(work_status==0){
-        pthread_mutex_lock(&mutex);
-//        if(work_status==0){
-            thread_counts++;
-            if(thread_counts==producersInfo.size+consumersInfo.size){
-                work_status=1;
-                warn("signal=cond_running");
-                pthread_cond_signal(&cond_running);
-            }
-//        }
-        pthread_mutex_unlock(&mutex);
-//    }
+    pthread_mutex_lock(&mutex);
+    thread_counts++;
+    if(thread_counts==producersInfo.size+consumersInfo.size){
+        flag_running=1;
+        warn("signal=cond_running");
+        pthread_cond_signal(&cond_running);
+    }
+    pthread_mutex_unlock(&mutex);
 }
 void notify_task_stop(){
     //todo 处理出错或其它会导致客户端状态变为 2-stop
     {
         pthread_mutex_lock(&mutex);
-        work_status=2;
+        flag_stop=1;
         pthread_cond_broadcast(&cond_stop);
         pthread_mutex_unlock(&mutex);
     }
 }
-void notify_main_terminated(){
-    //todo 通知任务已全部结束
-    {
-        pthread_mutex_lock(&mutex);
-        thread_counts--;
-        if(thread_counts==0){
-            work_status=4;
-            warn("signal=cond_terminated");
-            pthread_cond_broadcast(&cond_terminated);//通知主线程
-        }
-        warn("thread_counts=%d",thread_counts);
-        pthread_mutex_unlock(&mutex);
+void notify_task_exit(){
+    //todo 通知任务已退出
+    pthread_mutex_lock(&mutex);
+    thread_counts--;
+    if(thread_counts==0){
+        flag_exit=1;
+        warn("signal=cond_exit");
+        pthread_cond_broadcast(&cond_exit);//通知主线程
     }
+    warn("thread_counts=%d",thread_counts);
+    pthread_mutex_unlock(&mutex);
 }
+
+
 
 
 
