@@ -24,8 +24,10 @@ pthread_cond_t cond_exit;
 
 
 RabbitmqConfig_t rabbitmqConfigInfo={
-    .hostname="168.192.200.132",
-    .port=5672
+    .hostname="192.168.200.132",
+    .port=5672,
+    .user="root",
+    .passwd="123123"
 };
 
 connectionsInfo_t rabbitmqConnsInfo={
@@ -90,7 +92,8 @@ RabbitmqExchanges_t exchangesInfo={
         //todo 上传 设备数据消息 设备故障消息
         {
             .name="myExchange",
-            .type=0,
+            .type="topic",
+//            .passive=0,
             .durability=1,
             .autoDelete=0,
             .internal=0,
@@ -99,7 +102,8 @@ RabbitmqExchanges_t exchangesInfo={
         //todo 死信交换机
         {
             .name="deadLetterExchange",
-            .type=0,
+            .type="direct",
+//            .passive=0,
             .durability=1,
             .autoDelete=0,
             .internal=0,
@@ -115,15 +119,15 @@ RabbitmqQueues_t queuesInfo={
         {
             .name="plc_data",
             .type=0,
+//            .passive=0,
             .durability=1,
             .exclusive=0,
             .auto_delete=0,
             //todo 指定死信交换机
             .args={
-                {.type=0,.key=ARGUMENT_QUEUE_00,.value.integer=1},
-                {.type=0,.key=ARGUMENT_QUEUE_01,.value.integer=1},
-                {.type=1,.key=ARGUMENT_QUEUE_02,.value.str=""},
-                {.type=0,.key=ARGUMENT_QUEUE_02,.value.integer=1},
+//                {.type=0,.key=ARGUMENT_QUEUE_00,.value.integer=},
+                {.type=0,.key=ARGUMENT_QUEUE_01,.value.integer=3600},
+//                {.type=1,.key=ARGUMENT_QUEUE_02,.value.str="[reject-publish|]"},
                 {.type=1,.key=ARGUMENT_QUEUE_04,.value.str="deadLetterExchange"},
                 {.type=1,.key=ARGUMENT_QUEUE_05,.value.str="deadRoutingKeyExample"}
 //                {.type=0,.key=ARGUMENT_QUEUE_06,.value.str=},
@@ -136,12 +140,13 @@ RabbitmqQueues_t queuesInfo={
             .name="Fault_Reports",
             .type=0,
             .durability=1,
+//            .passive=0,
             .exclusive=0,
             .auto_delete=0,
             //todo 指定死信交换机
             .args={
-                {.type=0,.key=ARGUMENT_QUEUE_04,.value.str="deadLetterExchange"},
-                {.type=0,.key=ARGUMENT_QUEUE_05,.value.str="deadRoutingKeyExample"}
+                {.type=1,.key=ARGUMENT_QUEUE_04,.value.str="deadLetterExchange"},
+                {.type=1,.key=ARGUMENT_QUEUE_05,.value.str="deadRoutingKeyExample"}
             }
         }
     }
@@ -292,18 +297,19 @@ int rabbitmq_check_channel_index(int conn_index,int channel_index){
 
 }
 int rabbitmq_check_queue(int queue_index){
-    rabbitmqConnsInfo.conns[0].connState;
-    rabbitmqConnsInfo.conns[0].channelsInfo.channels[0].num;
+    //todo 连接和通道
+    amqp_connection_state_t connState = rabbitmqConnsInfo.conns[0].connState;
+    int channel_num = rabbitmqConnsInfo.conns[0].channelsInfo.channels[0].num;
 
-
+    //todo 队列基本参数
     RabbitmqQueueEntity_t queue = queuesInfo.queues[queue_index];
-
     amqp_bytes_t queue_name = amqp_cstring_bytes(queue.name);
-    queue.passive;
-    queue.durability;
-    queue.exclusive;
-    queue.auto_delete;
-    //解析拓展参数
+//    queue.passive;
+//    queue.durability;
+//    queue.exclusive;
+//    queue.auto_delete;
+    
+    //todo 解析拓展参数
     amqp_table_entry_t kvs[9];
     amqp_table_t xargs;
     xargs.entries=kvs;
@@ -312,38 +318,77 @@ int rabbitmq_check_queue(int queue_index){
         //todo key解析
         xargs.entries[i].key = amqp_cstring_bytes(queue.args[i].key);
 
-
         //todo value整数解析
         if(queue.args[i].type==0){
-            xargs.entries->value.kind=AMQP_FIELD_KIND_I32;
-            xargs.entries->value.value.bytes = amqp_cstring_bytes(queue.args[i].value.str);
+            xargs.entries[i].value.kind=AMQP_FIELD_KIND_I32;
+            xargs.entries[i].value.value.i32 = queue.args[i].value.integer;
         }
         //todo value字符串解析
         else if(queue.args[i].type==1){
-            xargs.entries->value.kind=AMQP_FIELD_KIND_BYTES;
-            xargs.entries->value.value.bytes = amqp_cstring_bytes(queue.args[i].value.str);
+            xargs.entries[i].value.kind=AMQP_FIELD_KIND_UTF8;
+            xargs.entries[i].value.value.bytes = amqp_cstring_bytes(queue.args[i].value.str);
         }
         i++;
     }
-    xargs.num_entries=i;
+    if(i!=0){
+        xargs.num_entries=i;
+    }
+    else{
+        xargs=amqp_empty_table;
+    }
 
-    
-//    queuesInfo.queues[queue_index]
+    //todo 检测
     amqp_queue_declare_ok_t *r = amqp_queue_declare(
-            rabbitmqConnsInfo.conns[0].connState,//连接对象
-            1,//channel
-            amqp_cstring_bytes("myQueue"),//队列名称
-            0,//passive 0-队列不存在会自动创建，对了存在检查参数是否匹配，不匹配返回错误
-            0,//durable     队列元数据持久化，不保证数据不丢失
-            0,//exclusive
-            0,//auto_delete 无消费者在自动删除
-            amqp_empty_table//额外参数 (通常用amqp_empty_table)
+            connState,//连接对象
+            channel_num,//channel
+            queue_name,//队列名称
+            queue.passive,//passive 0-队列不存在会自动创建，对了存在检查参数是否匹配，不匹配返回错误
+            queue.durability,//durable     队列元数据持久化，不保证数据不丢失
+            queue.exclusive,//exclusive
+            queue.auto_delete,//auto_delete 无消费者在自动删除
+            xargs//额外参数 (通常用amqp_empty_table)
     );
-    
+    return die_on_amqp_error(amqp_get_rpc_reply(connState),"check queue fail")==1?0:1;
     
 }
 int rabbitmq_check_exchange(int exchange_index){
-    
+    //todo 连接和通道
+    amqp_connection_state_t connState = rabbitmqConnsInfo.conns[0].connState;
+    int channel_num = rabbitmqConnsInfo.conns[0].channelsInfo.channels[0].num;
+    //todo 交换机基本参数
+    RabbitmqExchangeEntity exchange = exchangesInfo.exchanges[exchange_index];
+    amqp_bytes_t exchange_name = amqp_cstring_bytes(exchange.name);
+
+    amqp_bytes_t exchangeType = amqp_cstring_bytes(exchange.type);
+
+    //todo 拓展参数
+    amqp_table_t xargs;
+    if(exchange.args[0].key!=NULL){
+        amqp_table_entry_t kvs;
+        xargs.num_entries=1;
+        xargs.entries=&kvs;
+        kvs.key = amqp_cstring_bytes(exchange.args[0].key);
+        kvs.value.kind = AMQP_FIELD_KIND_UTF8;
+        kvs.value.value.bytes = amqp_cstring_bytes(exchange.args[0].value.str);
+    }
+    else{
+        xargs=amqp_empty_table;
+    }
+
+
+    //todo 检测
+    amqp_exchange_declare(
+            connState,
+            channel_num,                       //channel
+            exchange_name,//exchange
+            exchangeType,//type
+            exchange.passive,//passive 检查模式
+            exchange.durability,//durable
+            exchange.autoDelete,//autoDelete
+            exchange.internal,//internal 内部交换机
+            xargs
+    );
+    return die_on_amqp_error(amqp_get_rpc_reply(connState),"check exchange fail")==1?0:1;
 }
 
 
@@ -372,8 +417,8 @@ int rabbitmq_reset_channels(int conn_index){
         return 0;
     }
     int size = rabbitmqConnsInfo.conns[conn_index].channelsInfo.size;
-    if(size > CONNECTION_MAX_SIZE){
-        warn("conns: size=%d,max=%d",size,CONNECTION_MAX_SIZE);
+    if(size > CHANNEL_MAX_SIZE){
+        warn("conns: size=%d,max=%d",size,CHANNEL_MAX_SIZE);
         return 0;
     }
     else{
@@ -397,7 +442,6 @@ int rabbitmq_reset_conn(int conn_index){
         //todo 设置连接状态 0-未打开
         rabbitmqConnsInfo.conns[conn_index].status = 0;
         //todo 设置连接相关指针 NULL
-        rabbitmqConnsInfo.conns[conn_index].connState =NULL;
         rabbitmqConnsInfo.conns[conn_index].connState =NULL;
         //todo 设置连接套接字 NULL
         rabbitmqConnsInfo.conns[conn_index].socket=NULL;
@@ -455,7 +499,7 @@ int rabbitmq_close_channels(int conn_index){
         return 0;
     }
     int size = rabbitmqConnsInfo.conns[conn_index].channelsInfo.size;
-    if(size > CONNECTION_MAX_SIZE){
+    if(size > CHANNEL_MAX_SIZE){
         warn("conns: size=%d,max=%d",size,CONNECTION_MAX_SIZE);
         return 0;
     }
@@ -575,7 +619,7 @@ int rabbitmq_init_channels(int conn_index){
         for (int i = 0; i < rabbitmqConnsInfo.conns[conn_index].channelsInfo.size; ++i) {
             flag&=rabbitmq_init_channel(conn_index,i);
             if(flag==0){
-                warn("channel[%d] reset: fail",i);
+                warn("channel[%d] int: fail",i);
                 break;
             }
         }
@@ -584,17 +628,17 @@ int rabbitmq_init_channels(int conn_index){
 }
 int rabbitmq_login_conn(amqp_connection_state_t conn){
     int res=0;
-    amqp_login(
-        conn,
-        "/",
-        0,//channel_max
-        131072,//frame_max
-        0,//heartbeat
-        AMQP_SASL_METHOD_PLAIN,//内部用户密码登录 | 外部系统登录
-        "root",
-        "123123"
+    amqp_rpc_reply_t reply = amqp_login(
+            conn,
+            "/",
+            0,//channel_max
+            131072,//frame_max
+            0,//heartbeat
+            AMQP_SASL_METHOD_PLAIN,//内部用户密码登录 | 外部系统登录
+            rabbitmqConfigInfo.user,
+            rabbitmqConfigInfo.passwd
     );
-    if(die_on_amqp_error(amqp_get_rpc_reply(conn), "Opening channel")==0){
+    if(die_on_amqp_error(reply, "login")==0){
         res = 1;
     }
     return res;
@@ -612,10 +656,11 @@ int rabbitmq_init_conn(int conn_index){
             warn("conn[%d] init: create fail",conn_index);
             return 0;
         }
+        rabbitmqConnsInfo.conns[conn_index].connState = pConn;
         //todo 创建tcp套接字
         amqp_socket_t *socket = amqp_tcp_socket_new(pConn);
         if(socket == NULL){
-            warn("conn[%d] init:socket create fail",conn_index);
+            warn("conn[%d] init: socket create fail",conn_index);
             return 0;
         }
         //todo 打开TCP连接
@@ -625,26 +670,28 @@ int rabbitmq_init_conn(int conn_index){
                 rabbitmqConfigInfo.port
         );
         if(res != AMQP_STATUS_OK){
-            warn("conn[%d] init:socket open fail",conn_index);
+            warn("conn[%d] init: socket open fail,host=%s,port=%d",
+                 conn_index,
+                 rabbitmqConfigInfo.hostname,
+                 rabbitmqConfigInfo.port
+             );
             return 0;
         }
-
+        rabbitmqConnsInfo.conns[conn_index].socket = socket;
         rabbitmqConnsInfo.conns[conn_index].status=1;
+
         //todo 连接的登录
         if(rabbitmq_login_conn(pConn)==0){
             return 0;
         }
-
         rabbitmqConnsInfo.conns[conn_index].status=2;
+
         //todo 初始化该连接下的通道
         if(rabbitmq_init_channels(conn_index)==0){
             return 0;
         }
-
         rabbitmqConnsInfo.conns[conn_index].status=3;
-        //todo 设置数据
-        rabbitmqConnsInfo.conns[conn_index].connState = pConn;
-        rabbitmqConnsInfo.conns[conn_index].socket = socket;
+
         return 1;
     }
 }
@@ -685,7 +732,7 @@ int rabbitmq_init_conns(){
                     default:
                         break;
                 }
-                warn("conn[%d] reset: fail",i);
+                warn("conn[%d] init: fail",i);
                 break;
             }
         }
@@ -766,7 +813,6 @@ void *consumer_task_00(void *arg){
 
     //todo 通知 线程已就绪
     notify_task_run();
-
     {
         while(1){
             //todo 运行
@@ -918,59 +964,96 @@ int rabbitmq_init_client(){
     if(rabbitmq_init_conns()==0){
         return 0;
     }
-    //todo 交换机检查
-    for (int i = 0; i < exchangesInfo.size; ++i) {
-        rabbitmq_check_exchange(i);
+
+    else{
+        int flag=1;
+        //todo 交换机检查
+        for (int i = 0; i < exchangesInfo.size; ++i) {
+            if(rabbitmq_check_exchange(i)==0){
+                flag=0;
+                warn("exchange[%d]:check error",i);
+                break;
+            }
+        }
+        //todo 队列检查
+        for (int i = 0; i < queuesInfo.size; ++i) {
+            if(rabbitmq_check_queue(i)==0){
+                flag=0;
+                warn("queue[%d]:check error",i);
+                break;
+            }
+        }
+        return flag;
     }
-    //todo 队列检查
-    for (int i = 0; i < queuesInfo.size; ++i) {
-        rabbitmq_check_queue(i);
-    }
-    return 1;
+
 }
 
 int rabbitmq_start_client(){
     if(rabbitmq_init_client()==0){
-        warn("rabbitmq client:init fail",stderr);
-    }else{
-        int flag=1;
-        work_status=0;//0-就绪 1-运行 2-停止 3-终止
-        thread_counts = producersInfo.size + consumersInfo.size;
+        warn("rabbitmq client: init fail",stderr);
+        return 0;
+    }
+    else{
+//        //todo 设置缓冲类型 无缓冲
+//        setbuf(stdout, NULL);
 
-        //todo 初始化条件变量
+        //todo 初始化锁、条件变量、barrier
         pthread_mutex_init(&mutex,NULL);
         pthread_cond_init(&cond_running, NULL);
         pthread_cond_init(&cond_stop, NULL);
-        pthread_cond_init(&cond_exit, NULL);
+        pthread_cond_init(&cond_exit,NULL);
 
-        //todo 启动生产者
-        flag&=rabbitmq_start_consumers();
+        //todo 启动任务
+        rabbitmq_start_consumers();
+        rabbitmq_start_producers();
 
-        //todo 启动消费者
-        flag&=rabbitmq_start_producers();
-
-        if(flag==1){
-            //todo 如果某个线程出现异常并结束
+        //todo 如果某个线程出现异常并结束
+        {
+            warn("main: get lock");
             pthread_mutex_lock(&mutex);
+            warn("main: locked");
 
-            //todo 修改共享数据 1-运行
+            work_status=0;
+            //todo 等待 运行
+            while(flag_running!=1){
+                warn("main: wait cond_running,work_status=%d",work_status);
+                pthread_cond_wait(&cond_running, &mutex);
+            }
+            warn("main: 1");
             work_status=1;
-            pthread_cond_broadcast(&cond_running);
-            while(work_status != 2) {
-                pthread_cond_wait(&cond_stop, &mutex);
+
+            //todo 等待 stop
+            while(flag_stop!=1){
+                warn("main: wait cond_stop,work_status=%d",work_status);
+                pthread_cond_wait(&cond_stop,&mutex);
             }
+            warn("main: 2");
+            work_status=2;
 
+            warn("main: close all threads,work_status=%d",work_status);
 
-            //todo 关闭所有线程
-            warn("main: close all threads");
-            while(thread_counts!=0){
-                pthread_cond_wait(&cond_exit, &mutex);
+            //todo 等待 所有子线程结束任务 exit
+            while(flag_exit!=1){
+                warn("main: wait cond_exit,work_status=%d",work_status);
+                pthread_cond_wait(&cond_exit,&mutex);
             }
-
-            //todo 修改共享数据 3-终止
+            warn("main: 3");
             work_status=3;
+
+//        //todo 等待 terminated
+//        while(work_status==3){
+//            warn("main: wait cond_terminated,work_status=%d",work_status);
+//            pthread_cond_wait(&cond_terminated,&mutex);
+//        }
+
+            warn("main: release lock,work_status=%d",work_status);
             pthread_mutex_unlock(&mutex);
-            
+            warn("main: unlocked,work_status=%d",work_status);
+
+
+            //todo 打印退出信息
+            log_threads_exitInfo();
+
         }
         //todo 释放锁和条件变量资源
         pthread_cond_destroy(&cond_stop);

@@ -18,6 +18,7 @@
 //交换机参数
 #define ARGUMENT_EXCHANGE_ALTER "alternate-exchange"
 //队列参数
+// 注：字符串类型参数 对应 AMQP_FIELD_KIND_UTF8
 #define ARGUMENT_QUEUE_00 "x-expires"                   //队列生存期
 #define ARGUMENT_QUEUE_01 "x-message-ttl"               //消息生存期
 #define ARGUMENT_QUEUE_02 "x-overflow"                  //拒绝策略
@@ -34,8 +35,10 @@ typedef void *(*task_t) (void *) ;
 
 //结构体
 typedef struct {
-    char hostname[20];
+    char *hostname;
     int port;
+    char *user;
+    char *passwd;
 }RabbitmqConfig_t;//连接登录信息
 
 
@@ -90,7 +93,8 @@ typedef struct {
 #define EXCHANGE_MAX_SIZE 3
 typedef struct{
     char *name;
-    int type;       //0-direct 1-fanout 2-topic 3-headers
+    char *type;       //0-direct 1-fanout 2-topic 3-headers
+    int passive;
     int durability;
     int autoDelete; //无消费者自动删除队列
     int internal;   //标识为内部交换机
