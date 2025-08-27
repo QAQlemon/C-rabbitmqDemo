@@ -2,15 +2,22 @@
 <project version="4">
   <component name="PublishConfigData" autoUpload="Always" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
-      <paths name="GCC-ubuntu20.04 (63a2b131-6122-4759-89a2-f0e2f15fdfd2)">
+      <paths name="GCC-ubuntu20.04 (5af9fa22-82e0-4dcc-992b-9ba4c00e73e4)">
         <serverdata>
           <mappings>
-            <mapping deploy="/root/software/rabbitmq/C-rabbitmqDemo" local="$PROJECT_DIR$" />
+            <mapping deploy="/root/software/rabbitmq/C-RabbitmqDemo" local="$PROJECT_DIR$" />
           </mappings>
           <excludedPaths>
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-gcc-ubuntu2004" />
           </excludedPaths>
+        </serverdata>
+      </paths>
+      <paths name="delbian (7cb632d6-a9d4-4c79-a892-8fd20312eaec)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
         </serverdata>
       </paths>
     </serverData>

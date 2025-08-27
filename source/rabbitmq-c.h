@@ -122,7 +122,7 @@ typedef struct {
 }RabbitmqBinds_t;//绑定
 
 typedef struct{
-    int type;//1-生产者 2-消费者
+    int type;//0-生产者 1-消费者
     int index;//下标
     int code;//枚举 待完善
     char *info;//推出信息
@@ -133,6 +133,7 @@ typedef struct{
     int index;          //用于线程快速查找消费者信息
     int conn_index;     //连接：rabbitmqConnsInfo.conns[conn_index]
     int channel_index;  //通道：rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index]
+    int queue_index;    //队列：
     char *consumer_tag;
 
     //消息接收的全局设置
@@ -155,6 +156,7 @@ typedef struct{
     int index;          //用于线程快速查找生产者信息
     int conn_index;     //连接：rabbitmqConnsInfo.conns[conn_index]
     int channel_index;  //通道：rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index]
+    int exchange_index; //交换机
 
     int confirmMode;//0-无发布确认 1-启用发布确认
 
@@ -171,22 +173,19 @@ typedef struct{
     producerEntity_t_t producers[PRODUCER_MAX_SIZE];
 }producers_t;
 
-
-
-
-//全局变量
+//todo 全局变量
 extern RabbitmqConfig_t rabbitmqConfigInfo;//配置信息
-
 extern connectionsInfo_t rabbitmqConnsInfo;//连接和通道信息 0-消费 1-生产
-
 extern RabbitmqExchanges_t exchangesInfo;//交换机
-
 extern RabbitmqQueues_t queuesInfo;//队列
-
 extern RabbitmqBinds_t bindsInfo;//绑定信息
 
+//todo 目前一个消费者对应一个线程处理一个队列的消息 后续考虑扩展一个队列由多个消费者线程处理
+//todo
+extern consumers_t consumersInfo;//消息消费者
+extern producers_t producersInfo;//消息生产者
 
-
+//todo main与子线程间通讯
 extern pthread_mutex_t log_mutex;
 extern pthread_mutex_t mutex;
 extern volatile int thread_counts;
@@ -198,11 +197,6 @@ extern pthread_cond_t cond_stop;//子->主
 extern volatile int flag_exit;
 extern pthread_cond_t cond_exit;//主->子
 
-//extern exitInfo_t exitInfo;
-
-//todo 目前一个消费者对应一个线程处理一个队列的消息 后续考虑扩展一个队列由多个消费者线程处理
-extern consumers_t consumersInfo;//消息消费者
-extern producers_t producersInfo;//消息生产者
 
 //todo check函数
 int rabbitmq_check_conn_index(int conn_index);
@@ -230,6 +224,10 @@ int rabbitmq_login_conn(amqp_connection_state_t conn);
 int rabbitmq_init_conn(int conn_index);
 int rabbitmq_init_conns();
 
+int rabbitmq_init_consumer(int consumer_index);
+//int rabbitmq_init_consumers();
+int rabbitmq_init_producer(int producer_index);
+//int rabbitmq_init_producers();
 
 
 //todo start函数

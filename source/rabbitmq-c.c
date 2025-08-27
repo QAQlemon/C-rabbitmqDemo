@@ -41,12 +41,12 @@ connectionsInfo_t rabbitmqConnsInfo={
             .channelsInfo={
                 .size=3,
                 .channels={
-                    //todo 专用通道-非消费相关操作
+                    //todo index=0 专用通道-非生产相关操作
                     {
                         .num=1,
                         .status=0
                     },
-                    //todo 消费通道-线程专用
+                    //todo index>0 生产通道-线程专用
                     {
                         .num=2,
                         .status=0
@@ -66,12 +66,12 @@ connectionsInfo_t rabbitmqConnsInfo={
             .channelsInfo={
                 .size=3,
                 .channels={
-                    //todo 专用通道-非消费相关操作
+                    //todo index=0 专用通道-非消费相关操作
                     {
 //                        .num=1,
                         .status=0
                     },
-                    //todo 消费通道-线程专用
+                    //todo index>0 消费通道-线程专用
                     {
 //                        .num=2,
                         .status=0
@@ -173,14 +173,17 @@ consumers_t consumersInfo={
     .consumers={
         //todo 消费者
         {
+//            .index=0,
             .conn_index=1,
             .channel_index=2,
+            .queue_index=0,
             .consumer_tag="consumer00",
 //            .no_local=0,
 //            .no_ack=0,
 //            .exclusive=0,
 //            .thread_handle={}
-            .task=consumer_task_00
+            .task=consumer_task_00,
+//            .exitInfo={}
         }
     }
 };
@@ -191,6 +194,8 @@ producers_t producersInfo={
         {
             .conn_index=0,
             .channel_index=2,
+            .exchange_index=0,
+
             .confirmMode=0,
             //todo 消息持久化设置
             .props={
@@ -203,6 +208,8 @@ producers_t producersInfo={
         {
             .conn_index=0,
             .channel_index=2,
+            .exchange_index=0,
+
             .confirmMode=0,
             //todo 消息持久化设置
             .props={
@@ -781,10 +788,27 @@ int rabbitmq_init_conns(){
 
 };
 
+int rabbitmq_init_producer(int producer_index){
+
+    //todo 检查索引下标(生产者、连接、通道、交换机)
+    if(producer_index<0 || producer_index>=PRODUCER_MAX_SIZE){
+        warn("producer: index=%d,max=%d",producer_index,PRODUCER_MAX_SIZE);
+        return 0;
+    }
+    producersInfo.producers[producer_index].index=producer_index;
+
+    producersInfo.producers[producer_index].conn_index;
+
+    return 1;
+}
 
 //todo start函数
 int rabbitmq_start_producer(int index){
     //todo 初始化生产者结构体
+    if(rabbitmq_init_producer(index)==0){
+        warn("producer[%d]: init fail",index);
+        return 0;
+    }
     producersInfo.producers[index].index=index;
 
     //todo 启动线程
@@ -817,7 +841,10 @@ int rabbitmq_start_producers(){
 
 int rabbitmq_start_consumer(int index){
     //todo 初始化消费者结构体
-    consumersInfo.consumers[index].index=index;
+    if(rabbitmq_init_consumer(index)==0){
+        warn("consumer[%d]: init fail",index);
+        return 0;
+    }
 
     //todo 启动线程
     return pthread_create(
@@ -1025,8 +1052,13 @@ int rabbitmq_init_client(){
             }
         }
         //todo 绑定关系检查
-
-
+        for (int i = 0; i < bindsInfo.size; ++i) {
+            if(rabbitmq_check_bind(i)==0){
+                flag=0;
+                warn("bind[%d]:check error");
+                break;
+            }
+        }
         return flag;
     }
 
@@ -1038,9 +1070,9 @@ int rabbitmq_start_client(){
         return 0;
     }
     else{
-//        //todo 设置缓冲类型 无缓冲
+//        //todo 设置流的缓冲类型 无缓冲
 //        setbuf(stdout, NULL);
-
+//        setvbuf()
         //todo 初始化锁、条件变量、barrier
         pthread_mutex_init(&mutex,NULL);
         pthread_cond_init(&cond_running, NULL);
