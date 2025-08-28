@@ -15,12 +15,13 @@
 //todo 宏定义
 #define ROUTING_KEY_PLC_DATA "work.upload"
 #define ROUTING_KEY_FAULT_REPORTS "work.fault"
+#define ROUTING_KEY_DEAD_LETTER "deadRoutingKeyExample"
 //交换机参数
 #define ARGUMENT_EXCHANGE_ALTER "alternate-exchange"
 //队列参数
 // 注：字符串类型参数 对应 AMQP_FIELD_KIND_UTF8
 #define ARGUMENT_QUEUE_00 "x-expires"                   //队列生存期
-#define ARGUMENT_QUEUE_01 "x-message-ttl"               //消息生存期
+#define ARGUMENT_QUEUE_01 "x-message-ttl"               //消息生存期ms
 #define ARGUMENT_QUEUE_02 "x-overflow"                  //拒绝策略
 #define ARGUMENT_QUEUE_03 "x-single-active-consumer_task"    //单消费者活动模式,当其中一个消费者消费时，其余消费者将阻塞直至该消费者停止消费或断开连接
 #define ARGUMENT_QUEUE_04 "x-dead-letter-exchange"      //死信队列-交换机
@@ -30,8 +31,7 @@
 #define ARGUMENT_QUEUE_08 "x-queue-leader-locator"      //配置队列的领导者（Leader）定位器，和集群相关
 #define ARGUMENT_QUEUE_09 ""
 
-//别名
-typedef void *(*task_t) (void *) ;
+
 
 //结构体
 typedef struct {
@@ -46,7 +46,7 @@ typedef struct {
 typedef struct{
 //    int conn_index;//连接索引
     int num;//通道号（1-65535）: a.队列、交换机、绑定声明使用 b.生产者专用通道 c.消费者专用通道
-    int status;//标志位: 0-未启用 1-已启用
+    int status;//标志位: 0-未启用 1-已启用 2-已被线程使用
 }channelEntity_t;
 typedef struct{
     int size;
@@ -122,15 +122,23 @@ typedef struct {
 }RabbitmqBinds_t;//绑定
 
 typedef struct{
+    int code;//枚举 待完善 -1-异常退出 0-正常 1-被通知停止 2-异常退出
+    char *info;//执行信息
+}exitInfo_t;
+
+//任务信息
+typedef int (*task_t) (void *);
+typedef struct {
     int type;//0-生产者 1-消费者
     int index;//下标
-    int code;//枚举 待完善
-    char *info;//推出信息
-}exitInfo_t;
+    pthread_t thread_handle;
+    task_t task;
+    exitInfo_t exitInfo;
+}taskInfo_t;
 
 #define CONSUMER_MAX_SIZE 2
 typedef struct{
-    int index;          //用于线程快速查找消费者信息
+//    int index;          //用于线程快速查找消费者信息
     int conn_index;     //连接：rabbitmqConnsInfo.conns[conn_index]
     int channel_index;  //通道：rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index]
     int queue_index;    //队列：
@@ -141,10 +149,8 @@ typedef struct{
     int no_ack;//消费确认模式：0-手动ACK 1-自动ACK
     int exclusive;//排他消费(队列为消费者私有) 0-关闭 1-开启
 
-    //线程句柄
-    pthread_t thread_handle;
-    task_t task;
-    exitInfo_t exitInfo;
+    //任务信息
+    taskInfo_t taskInfo;
 }consumerEntity_t;
 typedef struct{
     int size;
@@ -153,7 +159,7 @@ typedef struct{
 
 #define PRODUCER_MAX_SIZE 3
 typedef struct{
-    int index;          //用于线程快速查找生产者信息
+//    int index;          //用于线程快速查找生产者信息
     int conn_index;     //连接：rabbitmqConnsInfo.conns[conn_index]
     int channel_index;  //通道：rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index]
     int exchange_index; //交换机
@@ -163,14 +169,12 @@ typedef struct{
     //消息发送的全局设置
     amqp_basic_properties_t props;// 内容头帧的消息属性 投递模式
 
-    //线程句柄
-    pthread_t thread_handle;
-    task_t task;
-    exitInfo_t exitInfo;
+    //任务信息
+    taskInfo_t taskInfo;
 }producerEntity_t_t;
 typedef struct{
     int size;
-    producerEntity_t_t producers[PRODUCER_MAX_SIZE];
+    producerEntity_t_t producers[PRODUCER_MAX_SIZE];//0-生产者 1-消费者
 }producers_t;
 
 //todo 全局变量
@@ -180,8 +184,7 @@ extern RabbitmqExchanges_t exchangesInfo;//交换机
 extern RabbitmqQueues_t queuesInfo;//队列
 extern RabbitmqBinds_t bindsInfo;//绑定信息
 
-//todo 目前一个消费者对应一个线程处理一个队列的消息 后续考虑扩展一个队列由多个消费者线程处理
-//todo
+//todo 目前一个消费者对应一个连接一个通道一个线程一个队列 一个队列由可多个消费者线程处理
 extern consumers_t consumersInfo;//消息消费者
 extern producers_t producersInfo;//消息生产者
 
@@ -201,7 +204,7 @@ extern pthread_cond_t cond_exit;//主->子
 //todo check函数
 int rabbitmq_check_conn_index(int conn_index);
 int rabbitmq_check_channel_index(int conn_index,int channel_index);
-int rabbitmq_check_queue(int queue_index);
+int rabbitmq_check_queue_index(int queue_index);
 int rabbitmq_check_exchange(int exchange_index);
 int rabbitmq_check_bind(int bind_index);
 
@@ -224,11 +227,20 @@ int rabbitmq_login_conn(amqp_connection_state_t conn);
 int rabbitmq_init_conn(int conn_index);
 int rabbitmq_init_conns();
 
+int rabbitmq_init_queue(int queue_index);
+int rabbitmq_init_exchange(int exchange_index);
+int rabbitmq_init_bind(int bind_index);
+
 int rabbitmq_init_consumer(int consumer_index);
 //int rabbitmq_init_consumers();
 int rabbitmq_init_producer(int producer_index);
 //int rabbitmq_init_producers();
 
+//todo tools函数
+//分配指定连接下的可用通道
+int get_available_channel(int conn_index);
+//获取code对应的信息
+char *get_code_info(int exit_code);
 
 //todo start函数
 int rabbitmq_start_producer(int index);
@@ -239,11 +251,11 @@ int rabbitmq_start_consumers();
 
 
 //todo task函数
-//下拉
-void *consumer_task_00(void *arg);//定时数据
-//上传
-void *producer_task_upload_device_data(void *arg);//采集设备数据
-void *producer_task_upload_fault_data(void *arg);//设备故障数据
+void *rabbitmq_task(void *arg);
+//业务函数 注：此类函数处于while循环中，仅负责单次操作，每次操作完必须返回操作结果
+int consumer_task_00(void *arg);//下拉 定时数据
+int producer_task_upload_device_data(void *arg);//上传 采集设备数据
+int producer_task_upload_fault_data(void *arg);//上传 设备故障数据
 //线程就绪
 void notify_task_run();
 //线程停止

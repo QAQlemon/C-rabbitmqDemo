@@ -23,9 +23,7 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d37117ee-6323-43db-931c-5f8935bd59a7" name="更改" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/other.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/other.xml" afterDir="false" />
+    <list default="true" id="d37117ee-6323-43db-931c-5f8935bd59a7" name="更改" comment="待完成生产者和消费者的初始化处理">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/main.c" beforeDir="false" afterPath="$PROJECT_DIR$/source/main.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/rabbitmq-c.c" beforeDir="false" afterPath="$PROJECT_DIR$/source/rabbitmq-c.c" afterDir="false" />
@@ -105,11 +103,6 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake 应用程序.target">
-    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-      </method>
-    </configuration>
     <configuration name="target" type="CMakeRunConfiguration" factoryName="Application" singleton="false" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="true" EMULATE_TERMINAL="true" PASS_PARENT_ENVS_2="true" PROJECT_NAME="demo" TARGET_NAME="target" CONFIG_NAME="Debug-GCC-ubuntu20.04" RUN_TARGET_PROJECT_NAME="demo" RUN_TARGET_NAME="target">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -165,7 +158,8 @@
       <workItem from="1756207536080" duration="2893000" />
       <workItem from="1756257495297" duration="95000" />
       <workItem from="1756257620400" duration="308000" />
-      <workItem from="1756257968291" duration="9525000" />
+      <workItem from="1756257968291" duration="9595000" />
+      <workItem from="1756342181055" duration="21762000" />
     </task>
     <task id="LOCAL-00001" summary="start">
       <option name="closed" value="true" />
@@ -255,7 +249,15 @@
       <option name="project" value="LOCAL" />
       <updated>1756175229584</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="待完成生产者和消费者的初始化处理">
+      <option name="closed" value="true" />
+      <created>1756287172037</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1756287172037</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -298,7 +300,8 @@
     <MESSAGE value="rabbitmq的函数结构初版" />
     <MESSAGE value="rabbitmq的函数结构初版0.1" />
     <MESSAGE value="初步完成主线程对线程资源的释放，当main主线程检测到有一个子线程退出后，将通知所有线程进行停止操作，并组织资源释放" />
-    <option name="LAST_COMMIT_MESSAGE" value="初步完成主线程对线程资源的释放，当main主线程检测到有一个子线程退出后，将通知所有线程进行停止操作，并组织资源释放" />
+    <MESSAGE value="待完成生产者和消费者的初始化处理" />
+    <option name="LAST_COMMIT_MESSAGE" value="待完成生产者和消费者的初始化处理" />
   </component>
   <component name="XDebuggerManager">
     <watches-manager>
