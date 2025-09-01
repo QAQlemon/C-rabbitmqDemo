@@ -1,3 +1,4 @@
+#include <bits/types/struct_timeval.h>
 #include "rabbitmq-c.h"
 void main(){
 
@@ -5,4 +6,148 @@ void main(){
         rabbitmq_start_client();
     }
 }
+int wait_ack(taskInfo_t *taskInfo) {
+    amqp_publisher_confirm_t result = {0};
+    struct timeval timeout = {0, 0};
 
+    amqp_connection_state_t connState = rabbitmqConnsInfo.conns[producersInfo.producers[taskInfo->index].conn_index].connState;
+
+    for (;;) {
+
+        amqp_maybe_release_buffers(connState);
+
+        //todo 非阻塞
+        amqp_rpc_reply_t ret = amqp_publisher_confirm_wait(
+            connState,
+            &timeout,
+            &result
+        );
+
+        //todo 异常处理
+        if (AMQP_RESPONSE_LIBRARY_EXCEPTION == ret.reply_type) {
+            //todo 收到非ack帧
+            if (AMQP_STATUS_UNEXPECTED_STATE == ret.library_error) {
+                taskInfo->execInfo.info="AMQP_STATUS_UNEXPECTED_STATE is not ack frame";
+            }
+            //todo 等待确认已超时
+            else if (AMQP_STATUS_TIMEOUT == ret.library_error) {
+                // Timeout means you're done; no publisher confirms were waiting!
+                taskInfo->execInfo.info="AMQP_STATUS_TIMEOUT";
+            }
+            return -1;
+        }
+
+
+        //todo 需要检测该任务是否被通知stop
+        if(work_status==2){
+            return 1;//todo 非阻塞等待确认，处于死循环中需要实时检测Rabbitmq的工作状态
+        }
+
+        //todo 处理rabbitmq服务发来的响应
+        {
+            switch (result.method) {
+                case 0:
+                    //todo 非阻塞等待确认，还未收到任何消息
+                    break;
+                case AMQP_BASIC_ACK_METHOD:
+                    //todo 来自rabbitmq服务的ack
+                    return 0;
+                case AMQP_BASIC_RETURN_METHOD:
+                    //mandatory=1时,消息会被服务器发回到生产者
+                    taskInfo->execInfo.info="wait confirm but AMQP_BASIC_RETURN_METHOD";
+                    return -1;
+                case AMQP_BASIC_REJECT_METHOD:
+                    taskInfo->execInfo.info="wait confirm but AMQP_BASIC_REJECT_METHOD";
+                    return -1;
+                case AMQP_BASIC_NACK_METHOD:
+                    taskInfo->execInfo.info="wait confirm but AMQP_BASIC_NACK_METHOD";
+                    return -1;
+                case AMQP_CHANNEL_CLOSE_METHOD:
+                    taskInfo->execInfo.info="wait confirm but AMQP_CHANNEL_CLOSE_METHOD";
+                    return -1;
+                case AMQP_CONNECTION_CLOSE_METHOD:
+                    taskInfo->execInfo.info="wait confirm but AMQP_CONNECTION_CLOSE_METHOD";
+                    return -1;
+                default:
+                    taskInfo->execInfo.info="wait confirm but unknown frame type";
+                    return -1;
+            };
+        }
+    }
+}
+void *rabbitmq_task(void *arg){
+    //todo 任务信息
+    taskInfo_t *taskInfo = (taskInfo_t *) arg;
+
+
+    //todo 通知 线程已就绪
+    notify_task_run();
+    {
+        while(1){
+            int conn_index;
+            int channel_index;
+
+            //0-生产者 1-消费者
+            if(taskInfo->type==0){
+                conn_index=producersInfo.producers[taskInfo->index].conn_index;
+                channel_index=producersInfo.producers[taskInfo->index].channel_index;
+            }
+            else{
+                conn_index=consumersInfo.consumers[taskInfo->index].conn_index;
+                channel_index=consumersInfo.consumers[taskInfo->index].channel_index;
+            }
+
+            //todo 运行
+            if(work_status==1){
+                //todo 业务处理
+                taskInfo->execInfo.code = taskInfo->task(taskInfo);
+                //正常执行
+                if(taskInfo->execInfo.code == 0){
+                    continue;
+                }
+                else if(
+                    taskInfo->execInfo.code == -1   //异常退出
+                    || taskInfo->execInfo.code == 1 //被通知停止 生产者ack在非阻塞等待
+                ){
+                    //todo 通知main 线程已停止
+                    notify_task_stop(taskInfo);
+                    break;
+                }
+                //todo 通知main 连接重置
+                else if(
+                    taskInfo->execInfo.code == 2    //重置连接
+                ){
+                    notify_task_reset_conn(conn_index);
+                }
+                //todo 通知main 通道重置
+                else if(
+                    taskInfo->execInfo.code == 3    //重置通道
+                ){
+                    notify_task_reset_channel(conn_index,channel_index);
+                }
+            }
+            else if(work_status==2){
+                taskInfo->execInfo.code=1;
+                //0-生产者 1-消费者
+                if(taskInfo->type==0){
+                    info("thread producer[%d]:stopped",taskInfo->index);
+                }
+                else if(taskInfo->type==1){
+                    info("thread consumer[%d]:stopped",taskInfo->index);
+                }
+                break;
+            }
+        }
+
+        //todo 退出前处理
+        {
+            //todo 停止前进行资源释放
+            if(taskInfo->execInfo.info == NULL){
+                taskInfo->execInfo.info=get_code_info(taskInfo->execInfo.code);
+            }
+        }
+
+        //todo 通知任务已全部结束
+        notify_task_exit();
+    }
+}

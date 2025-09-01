@@ -41,28 +41,48 @@ typedef struct {
     char *passwd;
 }RabbitmqConfig_t;//连接登录信息
 
+//任务信息
+typedef int (*task_t) (void *);
+typedef struct{
+    int code;//枚举 待完善 -1-异常退出 0-正常 1-被通知停止 2-重置连接 3-重置通道
+    char *info;//执行信息
+}execInfo_t;
+typedef struct {
+    int type;//0-生产者 1-消费者
+    int index;//下标
+    pthread_t thread_handle;
+    task_t task;//todo 考虑针对
+    execInfo_t execInfo;//执行信息
+}taskInfo_t;
 
+//连接和通道信息
 #define CHANNEL_MAX_SIZE 3
 typedef struct{
 //    int conn_index;//连接索引
     int num;//通道号（1-65535）: a.队列、交换机、绑定声明使用 b.生产者专用通道 c.消费者专用通道
-    int status;//标志位: 0-未启用 1-已启用 2-已被线程使用
+    int status;//标志位: 0-关闭 1-可用 2-已被线程使用
+    taskInfo_t *taskInfo;
 }channelEntity_t;
 typedef struct{
     int size;
     channelEntity_t channels[CHANNEL_MAX_SIZE];
+
+    pthread_cond_t cond_reset_channel;
 }channelInfo_t;
 
 #define CONNECTION_MAX_SIZE 2
 typedef struct{
-    int status;//0-未打开 1-已连接 2-已登录 3-通道已打开
+    int status;//0-未打开 1-已连接 2-已登录 3-通道已打开(可用连接)
     amqp_connection_state_t connState;//指针 amqp_new_connection()返回
     amqp_socket_t *socket;//amqp_tcp_socket_new()返回
     channelInfo_t channelsInfo;//不同线程使用不同通道
+
 }connectionEntity;
 typedef struct{
     int size;
     connectionEntity conns[CONNECTION_MAX_SIZE];
+
+    pthread_cond_t cond_reset_conn;
 }connectionsInfo_t;//包含连接、通道信息
 
 #define QUEUE_MAX_SIZE 3
@@ -121,33 +141,23 @@ typedef struct {
     RabbitmqBindEntity_t binds[BIND_MAX_SIZE];
 }RabbitmqBinds_t;//绑定
 
-typedef struct{
-    int code;//枚举 待完善 -1-异常退出 0-正常 1-被通知停止 2-异常退出
-    char *info;//执行信息
-}exitInfo_t;
 
-//任务信息
-typedef int (*task_t) (void *);
-typedef struct {
-    int type;//0-生产者 1-消费者
-    int index;//下标
-    pthread_t thread_handle;
-    task_t task;
-    exitInfo_t exitInfo;
-}taskInfo_t;
+
+
 
 #define CONSUMER_MAX_SIZE 2
 typedef struct{
-//    int index;          //用于线程快速查找消费者信息
     int conn_index;     //连接：rabbitmqConnsInfo.conns[conn_index]
     int channel_index;  //通道：rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index]
     int queue_index;    //队列：
-    char *consumer_tag;
+    char *consumer_tag; //消费者名称: 为NULL时由rabbitmq服务自动分配
 
-    //消息接收的全局设置
+    //消息接收的全局参数设置
     int no_local;//是否接收自己发布的消息:0-关闭 1-开启
     int no_ack;//消费确认模式：0-手动ACK 1-自动ACK
     int exclusive;//排他消费(队列为消费者私有) 0-关闭 1-开启
+
+    int requeue;//消息拒绝后是否重新入队 0-关闭 1-开启
 
     //任务信息
     taskInfo_t taskInfo;
@@ -159,12 +169,15 @@ typedef struct{
 
 #define PRODUCER_MAX_SIZE 3
 typedef struct{
-//    int index;          //用于线程快速查找生产者信息
     int conn_index;     //连接：rabbitmqConnsInfo.conns[conn_index]
     int channel_index;  //通道：rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index]
     int exchange_index; //交换机
 
     int confirmMode;//0-无发布确认 1-启用发布确认
+
+    char *routingKey;//路由键
+    int mandatory;//强制投送，投送失败返回:AMQP_BASIC_RETURN_METHOD
+    int immediate;//立即投送到消费者，投送失败返回:AMQP_BASIC_RETURN_METHOD
 
     //消息发送的全局设置
     amqp_basic_properties_t props;// 内容头帧的消息属性 投递模式
@@ -176,6 +189,7 @@ typedef struct{
     int size;
     producerEntity_t_t producers[PRODUCER_MAX_SIZE];//0-生产者 1-消费者
 }producers_t;
+
 
 //todo 全局变量
 extern RabbitmqConfig_t rabbitmqConfigInfo;//配置信息
@@ -190,9 +204,10 @@ extern producers_t producersInfo;//消息生产者
 
 //todo main与子线程间通讯
 extern pthread_mutex_t log_mutex;
-extern pthread_mutex_t mutex;
+extern pthread_mutex_t mutex;//用于主线程和任务线程通讯
 extern volatile int thread_counts;
 extern volatile int work_status;//0-ready就绪 1-running运行 2-stop停止 3-exit 4-terminated
+
 extern volatile int flag_running;
 extern pthread_cond_t cond_running;//子->主
 extern volatile int flag_stop;
@@ -200,13 +215,29 @@ extern pthread_cond_t cond_stop;//子->主
 extern volatile int flag_exit;
 extern pthread_cond_t cond_exit;//主->子
 
+extern volatile int flag_wait_reset_conn;//-1
+extern pthread_cond_t cond_reset_conn;
+
+extern volatile int flag_wait_reset_channel;//-1
+extern pthread_cond_t cond_reset_channel;
+
+//线程就绪
+void notify_task_run();
+//线程停止
+void notify_task_stop(taskInfo_t *taskInfo);
+//线程退出
+void notify_task_exit();
+
+void notify_task_reset_conn(int conn_index);
+
+void notify_task_reset_channel(int conn_index,int channel_index);
 
 //todo check函数
 int rabbitmq_check_conn_index(int conn_index);
 int rabbitmq_check_channel_index(int conn_index,int channel_index);
 int rabbitmq_check_queue_index(int queue_index);
-int rabbitmq_check_exchange(int exchange_index);
-int rabbitmq_check_bind(int bind_index);
+int rabbitmq_check_exchange_index(int exchange_index);
+int rabbitmq_check_bind_index(int bind_index);
 
 //todo reset函数 重置状态和NULL
 int rabbitmq_reset_channel(int conn_index,int channel_index);
@@ -241,6 +272,8 @@ int rabbitmq_init_producer(int producer_index);
 int get_available_channel(int conn_index);
 //获取code对应的信息
 char *get_code_info(int exit_code);
+//获取单个连接下的任务数量
+int get_task_num_of_conn(int conn_index);
 
 //todo start函数
 int rabbitmq_start_producer(int index);
@@ -251,27 +284,27 @@ int rabbitmq_start_consumers();
 
 
 //todo task函数
+
 void *rabbitmq_task(void *arg);
+void *rabbitmq_consumer_task();
+void *rabbitmq_producer_task();
+
 //业务函数 注：此类函数处于while循环中，仅负责单次操作，每次操作完必须返回操作结果
 int consumer_task_00(void *arg);//下拉 定时数据
+int wait_ack(taskInfo_t *taskInfo);
 int producer_task_upload_device_data(void *arg);//上传 采集设备数据
 int producer_task_upload_fault_data(void *arg);//上传 设备故障数据
-//线程就绪
-void notify_task_run();
-//线程停止
-void notify_task_stop();
-//线程退出
-void notify_task_exit();
+
 
 
 //todo parse解析消息
-//int message_parse(char *buffer,int size);
+int message_parse(char *buffer,int size);
 
 //todo pack打包消息
-//int message_pack(char *buffer,int size);
+int message_pack(char *buffer,int size);
 
 //todo handle函数
-int consumer_handle_message(const amqp_envelope_t *envelope);
+int consumer_message_handle(const amqp_envelope_t *envelope);
 int producer_prepare_message(char *buffer,int size);
 
 
@@ -285,6 +318,7 @@ int rabbitmq_start_client();
 void log_threads_exitInfo();
 //日志打印
 void vlog(FILE *fd,char *str,va_list args);
+void log(FILE *fd ,char *str,...);
 void info(char *str,...);
 void warn(char *str,...);
 
