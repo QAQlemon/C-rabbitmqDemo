@@ -1,7 +1,7 @@
 #include <bits/types/struct_timeval.h>
+#include <unistd.h>
 #include "rabbitmq-c.h"
 void main(){
-
     {
         rabbitmq_start_client();
     }
@@ -39,7 +39,7 @@ int wait_ack(taskInfo_t *taskInfo) {
 
 
         //todo 需要检测该任务是否被通知stop
-        if(work_status==2){
+        if(work_status==4){
             return 1;//todo 非阻塞等待确认，处于死循环中需要实时检测Rabbitmq的工作状态
         }
 
@@ -81,7 +81,7 @@ void *rabbitmq_task(void *arg){
 
 
     //todo 通知 线程已就绪
-    notify_task_run();
+    task_notify_main_run();
     {
         while(1){
             int conn_index;
@@ -96,12 +96,33 @@ void *rabbitmq_task(void *arg){
                 conn_index=consumersInfo.consumers[taskInfo->index].conn_index;
                 channel_index=consumersInfo.consumers[taskInfo->index].channel_index;
             }
+            //todo 0-就绪
+            if(work_status==0){
+                sleep(1);
+                continue;
+            }
+            //todo 1-运行
+            else if(
+                    work_status==1    //todo 1-running
+                    || work_status==2 //todo 2-conn重置
+                    || work_status==3 //todo 3-channel重置
+            ){
+                //todo （被动）当检测到main状态处于重置时 确保任务所对应的连接是可用的
+                if(work_status==2){
+//                    if(rabbitmqConnsInfo.conns[conn_index].reset_flag==1){
+                        task_wait_main_reset_conn(conn_index);
+//                    }
+                }
+                else if(work_status==3){
+//                    if(rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].status!=2){
+                        task_wait_main_reset_channel(conn_index, channel_index);
+//                    }
+                }
 
-            //todo 运行
-            if(work_status==1){
                 //todo 业务处理
-                taskInfo->execInfo.code = taskInfo->task(taskInfo);
-                //正常执行
+                taskInfo->execInfo.code = taskInfo->task(taskInfo);//任务只需要修改连接状态
+
+                //todo 执行结果处理
                 if(taskInfo->execInfo.code == 0){
                     continue;
                 }
@@ -110,23 +131,24 @@ void *rabbitmq_task(void *arg){
                     || taskInfo->execInfo.code == 1 //被通知停止 生产者ack在非阻塞等待
                 ){
                     //todo 通知main 线程已停止
-                    notify_task_stop(taskInfo);
+                    task_notify_main_stop(taskInfo);
                     break;
                 }
-                //todo 通知main 连接重置
+                //todo （主动）通知main 连接重置
                 else if(
                     taskInfo->execInfo.code == 2    //重置连接
                 ){
-                    notify_task_reset_conn(conn_index);
+                    task_notify_main_reset_conn(conn_index);
                 }
-                //todo 通知main 通道重置
+                //todo （主动）通知main 通道重置
                 else if(
                     taskInfo->execInfo.code == 3    //重置通道
                 ){
-                    notify_task_reset_channel(conn_index,channel_index);
+                    task_notify_main_reset_channel(conn_index,channel_index);
                 }
             }
-            else if(work_status==2){
+            //todo 4-stop
+            else if(work_status==4){
                 taskInfo->execInfo.code=1;
                 //0-生产者 1-消费者
                 if(taskInfo->type==0){
@@ -135,19 +157,18 @@ void *rabbitmq_task(void *arg){
                 else if(taskInfo->type==1){
                     info("thread consumer[%d]:stopped",taskInfo->index);
                 }
+                //todo 退出前处理
+                {
+                    //todo 停止前进行资源释放
+                    if(taskInfo->execInfo.info == NULL){
+                        taskInfo->execInfo.info=get_code_info(taskInfo->execInfo.code);
+                    }
+                }
+
+                //todo 通知任务已全部结束
+                task_notify_main_exit();
                 break;
             }
         }
-
-        //todo 退出前处理
-        {
-            //todo 停止前进行资源释放
-            if(taskInfo->execInfo.info == NULL){
-                taskInfo->execInfo.info=get_code_info(taskInfo->execInfo.code);
-            }
-        }
-
-        //todo 通知任务已全部结束
-        notify_task_exit();
     }
 }
