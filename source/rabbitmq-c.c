@@ -21,6 +21,9 @@ pthread_cond_t cond_deal;
 volatile int flag_exit=0;
 pthread_cond_t cond_exit;
 
+//todo 全局重置标识
+volatile int flag_reset_conn;//
+volatile int flag_reset_channel;//-1
 
 RabbitmqConfig_t rabbitmqConfigInfo={
     .hostname="192.168.200.132",
@@ -268,18 +271,18 @@ void log_threads_exitInfo(){
 void vlog(FILE *fd,char *str,va_list args){
     vfprintf(fd,str,args);
 }
-void log(FILE *fd ,char *str,...){
-    va_list list;
-
-    pthread_mutex_lock(&log_mutex);
-
-    va_start(list,str);
-    vlog(stdout,str,list);
-    fflush(stdout);
-    va_end(list);
-
-    pthread_mutex_unlock(&log_mutex);
-}
+//void log(FILE *fd ,char *str,...){
+//    va_list list;
+//
+//    pthread_mutex_lock(&log_mutex);
+//
+//    va_start(list,str);
+//    vlog(stdout,str,list);
+//    fflush(stdout);
+//    va_end(list);
+//
+//    pthread_mutex_unlock(&log_mutex);
+//}
 void info(char *str,...){
     va_list list;
 
@@ -1445,18 +1448,7 @@ void task_notify_main_stop(taskInfo_t *taskInfo){
 void task_notify_main_reset_conn(int conn_index){
     pthread_mutex_lock(&mutex);
 
-    //todo 通知main处理
-//    flag_reset_conn++;
-//    if(flag_reset_conn == get_task_num_of_conn(conn_index)){
-//        //todo 通知 main处理
-//        if(flag_reset_conn == 0){
-//            flag_reset_conn=1;
-//        }
-//        //todo 唤醒主线程进行连接处理
-//        pthread_cond_broadcast(&cond_deal);
-//    }
-
-    //todo 通知main处理
+    //todo 通知main处理 同个连接下有多个线程，需要等待所有线程通知main,main才能重置连接，否则造成线程访问空连接问题
     rabbitmqConnsInfo.conns[conn_index].task_nums--;
     if(rabbitmqConnsInfo.conns[conn_index].task_nums==0){
         flag_reset_conn=1;
@@ -1497,9 +1489,8 @@ void task_wait_main_reset_conn(int conn_index){
     pthread_mutex_lock(&mutex);
     //todo 等待 main处理
     while(
-        rabbitmqConnsInfo.conns[conn_index].reset_flag !=0
-        || (rabbitmqConnsInfo.conns[conn_index].status != 5)
-
+        rabbitmqConnsInfo.conns[conn_index].reset_flag != 1
+        || rabbitmqConnsInfo.conns[conn_index].status != 5
     ){
         pthread_cond_wait(&rabbitmqConnsInfo.cond_reset_conn,&mutex);
     }
@@ -1508,15 +1499,14 @@ void task_wait_main_reset_conn(int conn_index){
 
 void task_wait_main_reset_channel(int conn_index, int channel_index){
     pthread_mutex_lock(&mutex);
-
     //todo 等待 main处理
-    while(rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].status != 1){
+    while(
+        rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].flag_reset!=0
+        || rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].status!=2
+
+    ){
         pthread_cond_wait(&rabbitmqConnsInfo.conns[conn_index].channelsInfo.cond_reset_channel,&mutex);
     }
-
-    //todo 修改通道状态
-    rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].status = 2;
-
     pthread_mutex_unlock(&mutex);
 }
 
@@ -1536,7 +1526,7 @@ int message_pack(char *buffer,int size){
 int producer_prepare_message(char *buffer,int size){
     //todo zc-业务处理逻辑
     memset(buffer,0,size);
-    log(stdout,"publish>");
+//    log(stdout,"publish>");
 
 //    int flags = fcntl(0, F_GETFL, 0);
 //    fcntl(0,F_SETFL,flags | O_NONBLOCK);
@@ -1557,6 +1547,8 @@ int producer_prepare_message(char *buffer,int size){
 }
 
 int main_handle_reset_channels(){
+
+
     for (int i = 0; i < rabbitmqConnsInfo.size; ++i) {
         channelInfo_t *channelsInfo = &rabbitmqConnsInfo.conns[i].channelsInfo;
         for (int j = 0; j < channelsInfo->size; ++j) {
@@ -1578,11 +1570,17 @@ int main_handle_reset_channels(){
                 if(init_role_by_taskInfo(channel->taskInfo)==0){
                     return 0;
                 }
+
+                pthread_mutex_lock(&mutex);
                 //todo 清除重置标志
                 channel->flag_reset=0;
+                //todo 通知等待该通道重置道德任务线程
+                pthread_cond_broadcast(&channelsInfo->cond_reset_channel);
+                pthread_mutex_unlock(&mutex);
             }
         }
     }
+
     return 1;
 }
 int main_handle_reset_conns(){
@@ -1604,8 +1602,13 @@ int main_handle_reset_conns(){
                 warn("main: init roles fail");
                 return 0;
             }
+
+            pthread_mutex_lock(&mutex);
             //todo 清除重置标志
             rabbitmqConnsInfo.conns[i].reset_flag=0;
+            //todo 通知等待该连接重置的任务线程
+            pthread_cond_broadcast(&rabbitmqConnsInfo.cond_reset_conn);
+            pthread_mutex_unlock(&mutex);
         }
     }
     return 1;
@@ -1722,14 +1725,18 @@ int rabbitmq_start_client(){
                     if(main_handle_reset_conns()==0){
                         goto exit;
                     }
-                    //todo 通知等待该连接重置的任务线程
 
-                    pthread_cond_broadcast(&rabbitmqConnsInfo.cond_reset_conn);
+
                 }
                 //todo 检查是否有通道重置处理
                 if(flag_reset_channel == 1){
                     work_status=3;
                     warn("main: status=%d",work_status);
+
+                    //todo 检查和处理通道重置
+                    if(main_handle_reset_channels()==0){
+                        goto exit;
+                    }
 
 
                 }

@@ -8,9 +8,9 @@
 #include "rabbitmq-c/amqp.h"
 #include <rabbitmq-c/tcp_socket.h>
 #include "utils.h"
-#include "log.h"
 
-
+#include "pthread.h"
+#include <stdio.h>
 
 //todo 宏定义
 #define ROUTING_KEY_PLC_DATA "work.upload"
@@ -69,7 +69,6 @@ typedef struct{
 typedef struct{
     int size;
     channelEntity_t channels[CHANNEL_MAX_SIZE];
-
     pthread_cond_t cond_reset_channel;
 }channelInfo_t;
 
@@ -221,8 +220,8 @@ extern pthread_cond_t cond_deal;//子->主
 extern volatile int flag_exit;
 extern pthread_cond_t cond_exit;//主->子
 
+//todo 全局重置标识
 extern volatile int flag_reset_conn;//
-
 extern volatile int flag_reset_channel;//-1
 
 //todo synchronized
@@ -334,7 +333,7 @@ int main_handle_reset_conns();
 void log_threads_exitInfo();
 //日志打印
 void vlog(FILE *fd,char *str,va_list args);
-void log(FILE *fd ,char *str,...);
+//void log(FILE *fd ,char *str,...);
 void info(char *str,...);
 void warn(char *str,...);
 

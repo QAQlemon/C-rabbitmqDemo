@@ -1,9 +1,59 @@
 #include <bits/types/struct_timeval.h>
 #include <unistd.h>
 #include "rabbitmq-c.h"
+pthread_mutex_t lock;
+pthread_cond_t cond;
+void *test(void * args){
+    sleep(1);
+    warn("thread: start");
+    pthread_mutex_lock(&lock);
+    warn("thread: get lock ");
+
+    pthread_cond_broadcast(&cond);
+    warn("thread: signal");
+    pthread_mutex_unlock(&lock);
+    return NULL;
+}
 void main(){
     {
-        rabbitmq_start_client();
+//        rabbitmq_start_client();
+    }
+    {
+
+        pthread_mutexattr_t attr;
+
+
+        pthread_mutexattr_init(&attr);
+        pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+        pthread_mutex_init(&lock, &attr);
+
+
+        pthread_cond_init(&cond,NULL);
+
+
+        pthread_t t;
+        pthread_create(&t,NULL,test,NULL);
+
+        {
+            pthread_mutex_lock(&lock);
+            warn("main: get locked");
+            pthread_mutex_lock(&lock);
+            warn("main: get locked");
+
+            warn("main: wait");
+            pthread_cond_wait(&cond,&lock);
+            warn("main: signaled");
+
+            warn("main: unlock");
+            pthread_mutex_unlock(&lock);
+
+            warn("main: unlock");
+            pthread_mutex_unlock(&lock);
+
+        }
+        while(1){
+
+        }
     }
 }
 int wait_ack(taskInfo_t *taskInfo) {
@@ -109,16 +159,11 @@ void *rabbitmq_task(void *arg){
             ){
                 //todo （被动）当检测到main状态处于重置时 确保任务所对应的连接是可用的
                 if(work_status==2){
-//                    if(rabbitmqConnsInfo.conns[conn_index].reset_flag==1){
-                        task_wait_main_reset_conn(conn_index);
-//                    }
+                    task_wait_main_reset_conn(conn_index);
                 }
                 else if(work_status==3){
-//                    if(rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].status!=2){
-                        task_wait_main_reset_channel(conn_index, channel_index);
-//                    }
+                    task_wait_main_reset_channel(conn_index, channel_index);
                 }
-
                 //todo 业务处理
                 taskInfo->execInfo.code = taskInfo->task(taskInfo);//任务只需要修改连接状态
 
