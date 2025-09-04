@@ -333,10 +333,12 @@ int main_handle_reset_conns();
 void log_threads_exitInfo();
 //日志打印
 void vlog(FILE *fd,char *str,va_list args);
-//void log(FILE *fd ,char *str,...);
+void log(FILE *fd ,char *str,...);
 void info(char *str,...);
 void warn(char *str,...);
 
-
+void print_lock_info(const pthread_mutex_t *mutex);
+void print_cond_info(const pthread_cond_t *cond);
+void print_synchronized_info(const pthread_mutex_t *mutex,const pthread_cond_t *cond);
 
 #endif //C_RABBITMQDEMO_RABBITMQ_C_H

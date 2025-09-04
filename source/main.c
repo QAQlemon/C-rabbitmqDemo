@@ -1,61 +1,97 @@
 #include <bits/types/struct_timeval.h>
 #include <unistd.h>
 #include "rabbitmq-c.h"
-pthread_mutex_t lock;
-pthread_cond_t cond;
+//#include "stdio.h"
+#include "time.h"
+pthread_mutex_t lock1;
+pthread_cond_t cond1;
+int flag=0;
 void *test(void * args){
-    sleep(1);
+    char buf[10];
     warn("thread: start");
-    pthread_mutex_lock(&lock);
+    fgets(buf,10,stdin);
+
+
+    pthread_mutex_lock(&lock1);
     warn("thread: get lock ");
 
-    pthread_cond_broadcast(&cond);
+    flag=1;
+//    pthread_cond_broadcast(&cond1);
+    warn("thread: pre signal");
+    print_synchronized_info(&lock1,&cond1);
+
+    pthread_cond_signal(&cond1);
+//    pthread_cond_wait(&cond1,&lock1);
+
     warn("thread: signal");
-    pthread_mutex_unlock(&lock);
+    print_synchronized_info(&lock1,&cond1);
+
+    pthread_mutex_unlock(&lock1);
     return NULL;
 }
-void main(){
+int main(){
     {
 //        rabbitmq_start_client();
     }
     {
 
         pthread_mutexattr_t attr;
-
-
         pthread_mutexattr_init(&attr);
         pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-        pthread_mutex_init(&lock, &attr);
+        pthread_mutex_init(&lock1, &attr);
 
+//        pthread_mutex_init(&lock1,NULL);
 
-        pthread_cond_init(&cond,NULL);
+        pthread_cond_init(&cond1, NULL);
 
 
         pthread_t t;
         pthread_create(&t,NULL,test,NULL);
 
+        //gdb调试
+        //查看锁持有情况：print lock.__data.__owner
+        //查看条件变量：print cond
+
         {
-            pthread_mutex_lock(&lock);
+            pthread_mutex_lock(&lock1);
             warn("main: get locked");
-            pthread_mutex_lock(&lock);
-            warn("main: get locked");
+            print_synchronized_info(&lock1,&cond1);
 
-            warn("main: wait");
-            pthread_cond_wait(&cond,&lock);
+            pthread_mutex_lock(&lock1);
+            warn("main: get locked");
+            print_synchronized_info(&lock1,&cond1);
+
+
+
+
+
+            warn("main: unlock");
+            pthread_mutex_unlock(&lock1);
+            print_synchronized_info(&lock1,&cond1);
+
+            pthread_cond_wait(&cond1,&lock1);
             warn("main: signaled");
+            print_synchronized_info(&lock1,&cond1);
 
             warn("main: unlock");
-            pthread_mutex_unlock(&lock);
-
-            warn("main: unlock");
-            pthread_mutex_unlock(&lock);
+            pthread_mutex_unlock(&lock1);
+            print_synchronized_info(&lock1,&cond1);
 
         }
-        while(1){
-
-        }
+        warn("ok");
+//            struct timespec timeout;
+//            while(flag!=1){
+//                clock_gettime(CLOCK_REALTIME, &timeout);
+//                timeout.tv_sec += 5; // 等待5秒
+//                warn("main: wait");
+////                lock1.__data.__count==1;
+//                pthread_cond_timedwait(&cond1, &lock1,&timeout);
+//                print_synchronized_info(&lock1,&cond1);
+//            }
     }
 }
+
+
 int wait_ack(taskInfo_t *taskInfo) {
     amqp_publisher_confirm_t result = {0};
     struct timeval timeout = {0, 0};

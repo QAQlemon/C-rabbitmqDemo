@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.22)
 project(demo)
 
+#设置C11标准
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+
+
 set(INCLUDE_DIR
     "/usr/local/include"
 
@@ -20,6 +25,8 @@ link_directories(${LIBRARY_DIR})
 
 #find_package(RABBTMQ_C REQUIRED)
 
+
+# 源码目录
 aux_source_directory(./source PROJ_SRC)
 #aux_source_directory(./demo PROJ_DEMO_SRC)
 

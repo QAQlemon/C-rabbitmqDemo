@@ -271,18 +271,18 @@ void log_threads_exitInfo(){
 void vlog(FILE *fd,char *str,va_list args){
     vfprintf(fd,str,args);
 }
-//void log(FILE *fd ,char *str,...){
-//    va_list list;
-//
-//    pthread_mutex_lock(&log_mutex);
-//
-//    va_start(list,str);
-//    vlog(stdout,str,list);
-//    fflush(stdout);
-//    va_end(list);
-//
-//    pthread_mutex_unlock(&log_mutex);
-//}
+void log(FILE *fd ,char *str,...){
+    va_list list;
+
+    pthread_mutex_lock(&log_mutex);
+
+    va_start(list,str);
+    vlog(stdout,str,list);
+    fflush(stdout);
+    va_end(list);
+
+    pthread_mutex_unlock(&log_mutex);
+}
 void info(char *str,...){
     va_list list;
 
@@ -310,8 +310,49 @@ void warn(char *str,...){
     pthread_mutex_unlock(&log_mutex);
 }
 
+void print_lock_info(const pthread_mutex_t *mutex){
+    log(stdout,"mutex: {data = {lock = %d, count = %d, owner = %d, nusers = %d, kind = %d, spins = %d, elision = %d}}\n",
+        mutex->__data.__lock,
+        mutex->__data.__count,
+        mutex->__data.__owner,
+        mutex->__data.__nusers,
+        mutex->__data.__kind,
+        mutex->__data.__spins,
+        mutex->__data.__elision
+    );
+}
+void print_cond_info(const pthread_cond_t *cond){
+    log(stdout,"cond: {data = {"
+               "wseq = {value64 =%d, value32 = {low =%d, high =%d}}, "
+               "g1_start = {value64 =%d, value32 = {low =%d, high =%d}}, "
+               "g_refs = {%d,%d}, "
+               "g_size = {%d,%d}, "
+               "g1_orig_size =%d, "
+               "wrefs =%d, "
+               "g_signals = {%d,%d}}}\n",
+        cond->__data.__wseq.__value64,
+        cond->__data.__wseq.__value32.__low,
+        cond->__data.__wseq.__value32.__high,
+        cond->__data.__g1_start.__value64,
+        cond->__data.__g1_start.__value32.__low,
+        cond->__data.__g1_start.__value32.__high,
+        cond->__data.__g_refs[0],
+        cond->__data.__g_refs[1],
+        cond->__data.__g_size[0],
+        cond->__data.__g_size[1],
+        cond->__data.__g1_orig_size,
+        cond->__data.__wrefs,
+        cond->__data.__g_signals[0],
+        cond->__data.__g_signals[1]
+    );
+}
 
-
+void print_synchronized_info(const pthread_mutex_t *mutex,const pthread_cond_t *cond){
+    warn("---------------------");
+    print_lock_info(mutex);
+    print_cond_info(cond);
+    warn("---------------------");
+}
 
 
 //todo check函数
@@ -1571,12 +1612,12 @@ int main_handle_reset_channels(){
                     return 0;
                 }
 
-                pthread_mutex_lock(&mutex);
+//                pthread_mutex_lock(&mutex);
                 //todo 清除重置标志
                 channel->flag_reset=0;
                 //todo 通知等待该通道重置道德任务线程
                 pthread_cond_broadcast(&channelsInfo->cond_reset_channel);
-                pthread_mutex_unlock(&mutex);
+//                pthread_mutex_unlock(&mutex);
             }
         }
     }
@@ -1603,12 +1644,12 @@ int main_handle_reset_conns(){
                 return 0;
             }
 
-            pthread_mutex_lock(&mutex);
+//            pthread_mutex_lock(&mutex);
             //todo 清除重置标志
             rabbitmqConnsInfo.conns[i].reset_flag=0;
             //todo 通知等待该连接重置的任务线程
             pthread_cond_broadcast(&rabbitmqConnsInfo.cond_reset_conn);
-            pthread_mutex_unlock(&mutex);
+//            pthread_mutex_unlock(&mutex);
         }
     }
     return 1;

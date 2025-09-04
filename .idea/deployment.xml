@@ -16,7 +16,7 @@
       <paths name="delbian (7cb632d6-a9d4-4c79-a892-8fd20312eaec)">
         <serverdata>
           <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/tmp/C-RabbitmqDemo" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>

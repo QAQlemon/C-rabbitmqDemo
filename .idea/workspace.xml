@@ -23,10 +23,11 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d37117ee-6323-43db-931c-5f8935bd59a7" name="更改" comment="资源回收，以及连接、通道重置待完善">
+    <list default="true" id="d37117ee-6323-43db-931c-5f8935bd59a7" name="更改" comment="posix可重入锁在wait操作时无法锁释放锁资源问题记录">
+      <change afterPath="$PROJECT_DIR$/条件变量踩坑gdb调试.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/log.c" beforeDir="false" afterPath="$PROJECT_DIR$/source/log.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/log.h" beforeDir="false" afterPath="$PROJECT_DIR$/source/log.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/main.c" beforeDir="false" afterPath="$PROJECT_DIR$/source/main.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/rabbitmq-c.c" beforeDir="false" afterPath="$PROJECT_DIR$/source/rabbitmq-c.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/rabbitmq-c.h" beforeDir="false" afterPath="$PROJECT_DIR$/source/rabbitmq-c.h" afterDir="false" />
@@ -91,7 +92,7 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "web.server",
+    "settings.editor.selected.configurable": "CPPToolchains",
     "structure.view.defaults.are.configured": "true",
     "vue.rearranger.settings.migration": "true"
   }
@@ -108,12 +109,12 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake 应用程序.target">
-    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
       </method>
     </configuration>
-    <configuration name="target" type="CMakeRunConfiguration" factoryName="Application" singleton="false" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="true" EMULATE_TERMINAL="true" PASS_PARENT_ENVS_2="true" PROJECT_NAME="demo" TARGET_NAME="target" CONFIG_NAME="Debug-GCC-ubuntu20.04" RUN_TARGET_PROJECT_NAME="demo" RUN_TARGET_NAME="target">
+    <configuration name="target" type="CMakeRunConfiguration" factoryName="Application" singleton="false" PROGRAM_PARAMS="-std=c11 -D_POSIX_CSOURCE=200809L" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="true" EMULATE_TERMINAL="true" PASS_PARENT_ENVS_2="true" PROJECT_NAME="demo" TARGET_NAME="target" CONFIG_NAME="Debug-GCC-ubuntu20.04" RUN_TARGET_PROJECT_NAME="demo" RUN_TARGET_NAME="target">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -175,7 +176,10 @@
       <workItem from="1756431532343" duration="16095000" />
       <workItem from="1756687383370" duration="23697000" />
       <workItem from="1756774358451" duration="26642000" />
-      <workItem from="1756867468310" duration="8353000" />
+      <workItem from="1756867468310" duration="8680000" />
+      <workItem from="1756946340464" duration="14954000" />
+      <workItem from="1756965929823" duration="4336000" />
+      <workItem from="1756970342806" duration="5731000" />
     </task>
     <task id="LOCAL-00001" summary="start">
       <option name="closed" value="true" />
@@ -297,7 +301,15 @@
       <option name="project" value="LOCAL" />
       <updated>1756805548400</updated>
     </task>
-    <option name="localTasksCounter" value="16" />
+    <task id="LOCAL-00016" summary="posix可重入锁在wait操作时无法锁释放锁资源问题记录">
+      <option name="closed" value="true" />
+      <created>1756891888158</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1756891888158</updated>
+    </task>
+    <option name="localTasksCounter" value="17" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -343,7 +355,8 @@
     <MESSAGE value="待完成生产者和消费者的初始化处理" />
     <MESSAGE value="完成基本任务框架，待完成业务函数" />
     <MESSAGE value="资源回收，以及连接、通道重置待完善" />
-    <option name="LAST_COMMIT_MESSAGE" value="资源回收，以及连接、通道重置待完善" />
+    <MESSAGE value="posix可重入锁在wait操作时无法锁释放锁资源问题记录" />
+    <option name="LAST_COMMIT_MESSAGE" value="posix可重入锁在wait操作时无法锁释放锁资源问题记录" />
   </component>
   <component name="XDebuggerManager">
     <watches-manager>
