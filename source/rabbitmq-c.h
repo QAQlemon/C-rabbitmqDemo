@@ -44,13 +44,13 @@ typedef struct {
 //任务信息
 typedef int (*task_t) (void *);
 typedef struct{
-    int code;//枚举 待完善 -1-异常退出 0-正常 1-被通知停止 2-重置连接 3-重置通道
+    int code;//枚举 待完善 -1-异常退出 0-正常 1-被通知停止(闲置状态) 2-被通知退出(终止) 3-连接已关闭 4-通道已关闭
     char *info;//执行信息
 }execInfo_t;
 typedef struct {
     int type;//0-生产者 1-消费者
     int index;//下标
-//    int status;//状态 生产者（0-非阻塞等待 1-发布阶段 2-确认阶段 3-异常退出阶段）
+    int status;//状态 生产者（0-就绪 1-等待中 2-发布中 3-确认中 4-结果处理中 5-闲置 6-结束）
 
     pthread_t thread_handle;
     task_t task;//todo 考虑针对
@@ -69,7 +69,8 @@ typedef struct{
 typedef struct{
     int size;
     channelEntity_t channels[CHANNEL_MAX_SIZE];
-    pthread_cond_t cond_reset_channel;
+
+    pthread_cond_t cond_reset_channel;//用于main通知子线程通道重置情况
 }channelInfo_t;
 
 #define CONNECTION_MAX_SIZE 2
@@ -85,7 +86,7 @@ typedef struct{
     int size;
     connectionEntity conns[CONNECTION_MAX_SIZE];
 
-    pthread_cond_t cond_reset_conn;
+    pthread_cond_t cond_reset_conn;//用于main通知子线程连接重置情况
 }connectionsInfo_t;//包含连接、通道信息
 
 #define QUEUE_MAX_SIZE 3
@@ -205,11 +206,15 @@ extern RabbitmqBinds_t bindsInfo;//绑定信息
 extern consumers_t consumersInfo;//消息消费者
 extern producers_t producersInfo;//消息生产者
 
-//todo main与子线程间通讯
-extern pthread_mutex_t log_mutex;
-extern pthread_mutex_t mutex_consumer_tasks;//消费者任务线程互斥锁
-extern pthread_mutex_t mutex_producer_tasks;//生产者任务线程互斥锁
-extern pthread_mutex_t mutex;//用于主线程和任务线程通讯
+//todo main与子线程间通
+typedef struct {
+    pthread_mutex_t mutex;
+    taskInfo_t *taskInfo;
+}lock_t;
+
+extern pthread_mutex_t log_mutex;//用于日志输出
+extern pthread_mutex_t global_task_mutex;//用于主线程和任务线程通讯
+
 extern volatile int thread_counts;
 extern volatile int work_status;//0-ready就绪 1-running运行 2-conn重置 3-channel重置 4-stop停止 5-exit
 
@@ -239,6 +244,13 @@ void task_notify_main_reset_channel(int conn_index, int channel_index);
 //
 void task_wait_main_reset_conn(int conn_index);
 void task_wait_main_reset_channel(int conn_index, int channel_index);
+//
+void init_synchronize_tools();
+void destroy_synchronize_tools();
+void clean_synchronize_resources(void *arg);
+
+void main_cancel_all_task();
+
 
 //todo check函数
 int rabbitmq_check_conn_index(int conn_index);
@@ -301,8 +313,8 @@ int get_task_num_of_conn(int conn_index);
 //todo task函数
 
 void *rabbitmq_task(void *arg);
-void *rabbitmq_consumer_task();
-void *rabbitmq_producer_task();
+void *rabbitmq_consumer_task(void * arg);
+void *rabbitmq_producer_task(void * arg);
 
 //业务函数 注：此类函数处于while循环中，仅负责单次操作，每次操作完必须返回操作结果
 int consumer_task_00(void *arg);//下拉 定时数据
@@ -340,5 +352,8 @@ void warn(char *str,...);
 void print_lock_info(const pthread_mutex_t *mutex);
 void print_cond_info(const pthread_cond_t *cond);
 void print_synchronized_info(const pthread_mutex_t *mutex,const pthread_cond_t *cond);
+
+
+
 
 #endif //C_RABBITMQDEMO_RABBITMQ_C_H

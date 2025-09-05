@@ -3,17 +3,17 @@
 #include <memory.h>
 #include <unistd.h>
 #include <bits/types/struct_timeval.h>
+#include <sys/syscall.h>
 #include <fcntl.h>
 
 #include "rabbitmq-c.h"
 
-pthread_mutex_t log_mutex=PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_consumer_tasks=PTHREAD_MUTEX_INITIALIZER;//消费者任务线程互斥锁
-pthread_mutex_t mutex_producer_tasks=PTHREAD_MUTEX_INITIALIZER;//生产者任务线程互斥锁
+pthread_mutex_t log_mutex;
+pthread_mutex_t global_task_mutex;
 
-pthread_mutex_t mutex;
 volatile int thread_counts=0;
 volatile int work_status=0;//0-ready就绪 1-running运行 2-stop停止 3-exit 4-terminated
+
 volatile int flag_running=0;
 pthread_cond_t cond_running;
 volatile int flag_stop=0;
@@ -1461,62 +1461,65 @@ int producer_task_upload_fault_data(void *arg){
 
 void task_notify_main_run(){
     //todo 通知 线程已就绪
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&global_task_mutex);
     thread_counts++;
     if(thread_counts==producersInfo.size+consumersInfo.size){
         flag_running=1;
         warn("signal=cond_running");
         pthread_cond_signal(&cond_running);
     }
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&global_task_mutex);
 }
 void task_notify_main_deal(){
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&global_task_mutex);
     pthread_cond_broadcast(&cond_deal);
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&global_task_mutex);
 }
 void task_notify_main_stop(taskInfo_t *taskInfo){
     //todo 处理出错或其它会导致客户端状态变为 2-stop
     {
-        pthread_mutex_lock(&mutex);
+        pthread_mutex_lock(&global_task_mutex);
 
         flag_stop=1;
         pthread_cond_broadcast(&cond_deal);
 
-        pthread_mutex_unlock(&mutex);
+        pthread_mutex_unlock(&global_task_mutex);
     }
 }
 void task_notify_main_reset_conn(int conn_index){
-    pthread_mutex_lock(&mutex);
+    {
+        pthread_mutex_lock(&global_task_mutex);
 
-    //todo 通知main处理 同个连接下有多个线程，需要等待所有线程通知main,main才能重置连接，否则造成线程访问空连接问题
-    rabbitmqConnsInfo.conns[conn_index].task_nums--;
-    if(rabbitmqConnsInfo.conns[conn_index].task_nums==0){
-        flag_reset_conn=1;
-        pthread_cond_broadcast(&cond_deal);
+        //todo 通知main处理 同个连接下有多个线程，需要等待所有线程通知main,main才能重置连接，否则造成线程访问空连接问题
+        rabbitmqConnsInfo.conns[conn_index].task_nums--;
+        if (rabbitmqConnsInfo.conns[conn_index].task_nums == 0) {
+            flag_reset_conn = 1;
+            pthread_cond_broadcast(&cond_deal);
+        }
+
+        pthread_mutex_unlock(&global_task_mutex);
     }
 
     //todo 等待处理完成
     task_wait_main_reset_conn(conn_index);
-
-    pthread_mutex_unlock(&mutex);
 }
 void task_notify_main_reset_channel(int conn_index, int channel_index){
-    pthread_mutex_lock(&mutex);
+    {
+        pthread_mutex_lock(&global_task_mutex);
 
-    //todo 通知main处理
-    flag_reset_conn=1;
-    pthread_cond_broadcast(&cond_deal);
+        //todo 通知main处理
+        flag_reset_conn = 1;
+        pthread_cond_broadcast(&cond_deal);
+
+        pthread_mutex_unlock(&global_task_mutex);
+    }
 
     //todo 等待处理完成
     task_wait_main_reset_channel(conn_index,channel_index);
-
-    pthread_mutex_unlock(&mutex);
-
 }
 void task_notify_main_exit(){
     //todo 通知任务已退出
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&global_task_mutex);
     thread_counts--;
     if(thread_counts==0){
         flag_exit=1;
@@ -1524,31 +1527,83 @@ void task_notify_main_exit(){
         pthread_cond_broadcast(&cond_exit);//通知主线程
     }
     warn("thread_counts=%d",thread_counts);
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&global_task_mutex);
 }
 void task_wait_main_reset_conn(int conn_index){
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&global_task_mutex);
     //todo 等待 main处理
     while(
         rabbitmqConnsInfo.conns[conn_index].reset_flag != 1
         || rabbitmqConnsInfo.conns[conn_index].status != 5
     ){
-        pthread_cond_wait(&rabbitmqConnsInfo.cond_reset_conn,&mutex);
+        pthread_cond_wait(&rabbitmqConnsInfo.cond_reset_conn,&global_task_mutex);
     }
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&global_task_mutex);
 }
 
 void task_wait_main_reset_channel(int conn_index, int channel_index){
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&global_task_mutex);
     //todo 等待 main处理
     while(
         rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].flag_reset!=0
         || rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].status!=2
 
     ){
-        pthread_cond_wait(&rabbitmqConnsInfo.conns[conn_index].channelsInfo.cond_reset_channel,&mutex);
+        pthread_cond_wait(&rabbitmqConnsInfo.conns[conn_index].channelsInfo.cond_reset_channel,&global_task_mutex);
     }
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&global_task_mutex);
+}
+void init_synchronize_tools(){
+    //todo 可重入锁 注：不建议使用可重入锁，目前发现POSIX提供的wait操作在可重入锁的内层同步块中，无法释放锁资源
+//    pthread_mutexattr_t attr;
+//    pthread_mutexattr_settype(&attr,PTHREAD_MUTEX_RECURSIVE);
+//    pthread_mutex_init(&mutex,&attr);//可重入锁
+
+
+    //todo 普通互斥锁 注：不要多次获取锁造成死锁
+    pthread_mutex_init(&log_mutex,NULL);
+    pthread_mutex_init(&global_task_mutex, NULL);
+
+
+    //todo 条件变量
+    pthread_cond_init(&cond_running, NULL);
+    pthread_cond_init(&cond_deal, NULL);
+    pthread_cond_init(&cond_exit,NULL);
+
+
+    pthread_cond_init(&rabbitmqConnsInfo.cond_reset_conn,NULL);
+
+
+    for (int i = 0; i < rabbitmqConnsInfo.size; ++i) {
+        pthread_cond_init(&rabbitmqConnsInfo.conns[i].channelsInfo.cond_reset_channel,NULL);
+    }
+
+}
+
+void destroy_synchronize_tools(){
+    //todo 条件变量
+    pthread_cond_destroy(&cond_running);
+    pthread_cond_destroy(&cond_deal);
+    pthread_cond_destroy(&cond_exit);
+
+    //todo 锁
+    pthread_mutex_destroy(&global_task_mutex);
+    pthread_mutex_destroy(&log_mutex);
+}
+
+void clean_synchronize_resources(void *arg){
+    info("thread exit");
+    pthread_mutex_t *p_lock = (pthread_mutex_t *) arg;
+    if( p_lock->__data.__owner==syscall(SYS_gettid)){
+        warn("clean: unlock");
+        pthread_mutex_unlock(p_lock);
+    }
+}
+void main_cancel_all_task(){
+//    for (int i = 0; i < ; ++i) {
+//
+//    }
+    
 }
 
 
@@ -1644,6 +1699,7 @@ int main_handle_reset_conns(){
                 return 0;
             }
 
+
 //            pthread_mutex_lock(&mutex);
             //todo 清除重置标志
             rabbitmqConnsInfo.conns[i].reset_flag=0;
@@ -1679,7 +1735,6 @@ int rabbitmq_init_client(){
     }
 
     else{
-//        int flag=1;
         //todo 交换机
         for (int i = 0; i < exchangesInfo.size; ++i) {
             if(rabbitmq_init_exchange(i)==0){
@@ -1707,23 +1762,16 @@ int rabbitmq_init_client(){
 }
 
 int rabbitmq_start_client(){
+    //todo 初始化同步工具（锁、条件变量）
+    init_synchronize_tools();
+
     if(rabbitmq_init_client()==0){
         warn("rabbitmq client: init fail");
-        return 0;
     }
     else{
 //        //todo 设置流的缓冲类型 无缓冲
 //        setbuf(stdout, NULL);
 //        setvbuf()
-
-        //todo 初始化锁、条件变量、barrier
-        pthread_mutexattr_t attr;
-        pthread_mutexattr_settype(&attr,PTHREAD_MUTEX_RECURSIVE);
-        pthread_mutex_init(&mutex,&attr);//可重入锁
-
-        pthread_cond_init(&cond_running, NULL);
-        pthread_cond_init(&cond_deal, NULL);
-        pthread_cond_init(&cond_exit,NULL);
 
         //todo 启动任务
         if(
@@ -1737,7 +1785,7 @@ int rabbitmq_start_client(){
         //todo main线程任务：负责连接和通道的申请和关闭，控制子线程的运行
         {
             warn("main: get lock");
-            pthread_mutex_lock(&mutex);
+            pthread_mutex_lock(&global_task_mutex);
             warn("main: locked");
 
             work_status=0;
@@ -1746,8 +1794,9 @@ int rabbitmq_start_client(){
             //todo 等待 运行
             while(flag_running!=1){
                 warn("main: wait cond_running,work_status=%d",work_status);
-                pthread_cond_wait(&cond_running, &mutex);
+                pthread_cond_wait(&cond_running, &global_task_mutex);
             }
+            sleep(5);
             work_status=1;
             warn("main: status=%d",work_status);
 
@@ -1755,7 +1804,7 @@ int rabbitmq_start_client(){
             while(flag_stop!=1){
                 warn("main: wait cond_stop,work_status=%d",work_status);
                 //todo 等待 子线程的通知处理
-                pthread_cond_wait(&cond_deal, &mutex);
+                pthread_cond_wait(&cond_deal, &global_task_mutex);
 
                 //todo 检查是否有连接重置处理
                 if(flag_reset_conn == 1){
@@ -1766,7 +1815,6 @@ int rabbitmq_start_client(){
                     if(main_handle_reset_conns()==0){
                         goto exit;
                     }
-
 
                 }
                 //todo 检查是否有通道重置处理
@@ -1793,7 +1841,8 @@ exit:
             //todo 等待 所有子线程结束任务 exit
             while(flag_exit!=1){
                 warn("main: wait cond_exit,work_status=%d",work_status);
-                pthread_cond_wait(&cond_exit,&mutex);
+                pthread_cond_wait(&cond_exit,&global_task_mutex);
+
             }
             work_status=5;
             warn("main: status=%d",work_status);
@@ -1805,7 +1854,7 @@ exit:
 //        }
 
             warn("main: release lock,work_status=%d",work_status);
-            pthread_mutex_unlock(&mutex);
+            pthread_mutex_unlock(&global_task_mutex);
             warn("main: unlocked,work_status=%d",work_status);
 
 
@@ -1813,8 +1862,7 @@ exit:
             log_threads_exitInfo();
 
         }
-        //todo 释放锁和条件变量资源
-        pthread_cond_destroy(&cond_deal);
-        pthread_mutex_destroy(&mutex);
     }
+    //todo 释放锁和条件变量资源
+    destroy_synchronize_tools();
 }
