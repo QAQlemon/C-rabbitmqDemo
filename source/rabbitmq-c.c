@@ -203,7 +203,7 @@ consumers_t consumersInfo={
 //            .requeue=0,
 
             .taskInfo={
-                .task=consumer_task_00,
+                .task=consumer_task_handle_cron_message,
             }
         }
     }
@@ -225,7 +225,7 @@ producers_t producersInfo={
                 .delivery_mode=2
             },
             .taskInfo={
-                .task=producer_task_upload_device_data,
+                .task=producer_task_prepare_device_message,
             }
         },
         //todo 生产者 设备故障数据
@@ -243,7 +243,7 @@ producers_t producersInfo={
                 .delivery_mode=2
             },
             .taskInfo={
-                .task=producer_task_upload_fault_data,
+                .task=producer_task_prepare_fault_message,
             }
         }
     },
@@ -1222,7 +1222,7 @@ int rabbitmq_start_consumers(){
 
 //下拉
 //定时数据
-int consumer_task_00(void *arg){
+int get_an_message(void *arg){
     //todo 自定义返回信息
     taskInfo_t *taskInfo = (taskInfo_t *) arg;
 //    taskInfo->exitInfo.info="consumer[%d]: exited!";
@@ -1347,7 +1347,7 @@ int consumer_task_00(void *arg){
                             warn(r->reply_text.bytes);
 
                             //todo 修改重置标志
-                            rabbitmqConnsInfo.conns[consumerInfo.conn_index].reset_flag=1;
+                            rabbitmqConnsInfo.conns[consumerInfo.conn_index].flag_reset=1;
                             return 2;
                         }
 //                        //服务端投递帧(表示接下来服务端有消息发来)
@@ -1377,81 +1377,7 @@ int consumer_task_00(void *arg){
 //上传
 //采集设备数据
 int producer_task_upload_device_data(void *arg){
-    //todo 自定义返回信息
-    taskInfo_t *taskInfo = (taskInfo_t *) arg;
-//    taskInfo->exitInfo.info="consumer[%d]: exited!";
-    if(taskInfo->type!=0){
-        return -1;
-    }
 
-    producerEntity_t_t producerInfo = producersInfo.producers[taskInfo->index];
-    connectionEntity connInfo = rabbitmqConnsInfo.conns[producerInfo.conn_index];
-    
-    //参数
-    amqp_connection_state_t connState = connInfo.connState;
-    int channel = connInfo.channelsInfo.channels[producerInfo.channel_index].num;
-    amqp_bytes_t exchange = amqp_cstring_bytes(exchangesInfo.exchanges[producerInfo.exchange_index].name);
-    amqp_bytes_t routingKey = amqp_cstring_bytes(producerInfo.routingKey);
-    int confirmMode = producerInfo.confirmMode;
-    int mandatory = producerInfo.mandatory;
-    int immediate = producerInfo.immediate;
-    
-    amqp_basic_properties_t *props = &producerInfo.props;
-
-    {
-
-    }
-    
-    {
-        char buffer[100]={0};
-//        amqp_frame_t frame={};
-
-        //todo 准备消息内容
-        int code = producer_prepare_message(buffer, 100);//-1-异常 0-无数据发送 1-有数据待发送
-//        data = amqp_bytes_malloc(strlen(buffer)+1);
-        int res=0;
-        if(code==1){
-            //消息发布
-            int res=amqp_basic_publish(
-                    connState,
-                    channel,//channel
-                    exchange,   //exchange
-                    routingKey, //routingKey
-                    mandatory,//mandatory
-                    immediate,//immediate
-                    props,//properties 消息头帧属性
-                    amqp_cstring_bytes(buffer)//body
-            );
-
-//            amqp_status_enum;//枚举值
-            if(res==AMQP_STATUS_OK){
-                info("producer send:");
-                info(buffer);
-                //todo 检查发布确认是否开启
-                if(confirmMode == 1) {
-                    //todo 等待ack
-                    wait_ack(taskInfo);
-                }
-//                return 0;
-                res=0;
-            }
-            else{
-                warn("producer[%d]: publish fail",taskInfo->index);
-                res=-1;
-//                return -1;
-            }
-
-        }
-        else if(code==0){
-            return  0;
-        }
-        else{
-            warn("producer[%d]: message prepare fail",taskInfo->index);
-            return -1;
-        }
-
-        return res;
-    }
 }
 //设备故障数据
 int producer_task_upload_fault_data(void *arg){
@@ -1500,8 +1426,8 @@ void task_notify_main_reset_conn(int conn_index){
         pthread_mutex_unlock(&global_task_mutex);
     }
 
-    //todo 等待处理完成
-    task_wait_main_reset_conn(conn_index);
+//    //todo 等待处理完成
+//    task_wait_main_reset_conn(conn_index);
 }
 void task_notify_main_reset_channel(int conn_index, int channel_index){
     {
@@ -1514,8 +1440,8 @@ void task_notify_main_reset_channel(int conn_index, int channel_index){
         pthread_mutex_unlock(&global_task_mutex);
     }
 
-    //todo 等待处理完成
-    task_wait_main_reset_channel(conn_index,channel_index);
+//    //todo 等待处理完成
+//    task_wait_main_reset_channel(conn_index,channel_index);
 }
 void task_notify_main_exit(){
     //todo 通知任务已退出
@@ -1533,7 +1459,7 @@ void task_wait_main_reset_conn(int conn_index){
     pthread_mutex_lock(&global_task_mutex);
     //todo 等待 main处理
     while(
-        rabbitmqConnsInfo.conns[conn_index].reset_flag != 1
+            rabbitmqConnsInfo.conns[conn_index].flag_reset != 0
         || rabbitmqConnsInfo.conns[conn_index].status != 5
     ){
         pthread_cond_wait(&rabbitmqConnsInfo.cond_reset_conn,&global_task_mutex);
@@ -1682,7 +1608,7 @@ int main_handle_reset_channels(){
 int main_handle_reset_conns(){
     //todo 初始化被关闭的连接
     for (int i = 0; i < rabbitmqConnsInfo.size; ++i) {
-        if (rabbitmqConnsInfo.conns[i].reset_flag==1){
+        if (rabbitmqConnsInfo.conns[i].flag_reset == 1){
             //todo 关闭 连接释放资源
             if(rabbitmq_close_conn(i)==0){
                 warn("main: conn close fail");
@@ -1702,7 +1628,7 @@ int main_handle_reset_conns(){
 
 //            pthread_mutex_lock(&mutex);
             //todo 清除重置标志
-            rabbitmqConnsInfo.conns[i].reset_flag=0;
+            rabbitmqConnsInfo.conns[i].flag_reset=0;
             //todo 通知等待该连接重置的任务线程
             pthread_cond_broadcast(&rabbitmqConnsInfo.cond_reset_conn);
 //            pthread_mutex_unlock(&mutex);

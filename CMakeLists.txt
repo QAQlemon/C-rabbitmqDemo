@@ -8,7 +8,6 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(INCLUDE_DIR
     "/usr/local/include"
-
 )  # 或实际安装路径
 set(LIBRARY_DIR
     "/usr/local/lib"

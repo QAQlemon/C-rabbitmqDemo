@@ -44,13 +44,15 @@ typedef struct {
 //任务信息
 typedef int (*task_t) (void *);
 typedef struct{
-    int code;//枚举 待完善 -1-异常退出 0-正常 1-被通知停止(闲置状态) 2-被通知退出(终止) 3-连接已关闭 4-通道已关闭
+    int code;//0-正常处理(保持状态) 1-结果正常 2-连接已关闭 3-通道已关闭 4-数据准备失败 5-数据发布失败 6-发布ACK失败 | 7-手动ACK失败 | 8-非预期帧 | 9-被通知停止运行 10-被通知闲置
     char *info;//执行信息
+    void *data;//生产者-从控制板接收到的数据，用于发布  消费者-从rabbit服务获取到的数据，用于解析
 }execInfo_t;
 typedef struct {
     int type;//0-生产者 1-消费者
     int index;//下标
-    int status;//状态 生产者（0-就绪 1-等待中 2-发布中 3-确认中 4-结果处理中 5-闲置 6-结束）
+    int status;//状态 生产者（0-闲置（等待main重置连接或通道） 1-等待中 2-发布中 3-确认中 4-异常处理 5-结束）
+               //    消费者（0-闲置（等待main重置连接或通道） 1-等待中 2-处理消息中 3-异常处理 4-结束）
 
     pthread_t thread_handle;
     task_t task;//todo 考虑针对
@@ -76,7 +78,7 @@ typedef struct{
 #define CONNECTION_MAX_SIZE 2
 typedef struct{
     int status;//0-未打开 1-已创建连接结构体 2-已经创建套接字 3-已建立TCP连接 4-已登录 5-已打开通道(可用连接)
-    int reset_flag;//连接重置标识 0-无重置 1-需要重置
+    int flag_reset;//连接重置标识 0-无重置 1-需要重置
     int task_nums;//统计数 当前活动任务数
     amqp_connection_state_t connState;//指针 amqp_new_connection()返回
     amqp_socket_t *socket;//amqp_tcp_socket_new()返回
@@ -311,14 +313,20 @@ char *get_code_info(int exit_code);
 int get_task_num_of_conn(int conn_index);
 
 //todo task函数
-
 void *rabbitmq_task(void *arg);
-void *rabbitmq_consumer_task(void * arg);
-void *rabbitmq_producer_task(void * arg);
+//生产端和消费端的状态处理
+int get_an_message(void *arg);//下拉 定时数据
+void *rabbitmq_consumer_deal(void *arg);
+
+int wait_ack(taskInfo_t *taskInfo);
+void *rabbitmq_producer_deal(void *arg);
+
+//业务函数 非阻塞 后续扩展阻塞支持
+int consumer_task_handle_cron_message(void * arg);//解析转发 定时消息数据
+int producer_task_prepare_device_message(void * arg);//准备 采集设备数据
+int producer_task_prepare_fault_message(void * arg);//准备 设备故障数据
 
 //业务函数 注：此类函数处于while循环中，仅负责单次操作，每次操作完必须返回操作结果
-int consumer_task_00(void *arg);//下拉 定时数据
-int wait_ack(taskInfo_t *taskInfo);
 int producer_task_upload_device_data(void *arg);//上传 采集设备数据
 int producer_task_upload_fault_data(void *arg);//上传 设备故障数据
 

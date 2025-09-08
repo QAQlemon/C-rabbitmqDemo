@@ -1,6 +1,7 @@
 #include <bits/types/struct_timeval.h>
 #include <unistd.h>
 #include <sys/syscall.h>
+#include <malloc.h>
 #include "rabbitmq-c.h"
 //#include "stdio.h"
 #include "time.h"
@@ -67,11 +68,18 @@ void *test01(void * args){
 int main(){
 
 //todo rabbitmq客户端程序
+//    {
+//        rabbitmq_start_client();
+//    }
+
     {
-        rabbitmq_start_client();
+        rabbitmq_init_conns();
+
+
     }
 
-//todo 验证：
+
+//todo 验证：线程退出时注册的资源释放函数
 //    {
 //
 //        pthread_t t;
@@ -152,154 +160,425 @@ int wait_ack(taskInfo_t *taskInfo) {
 
     amqp_connection_state_t connState = rabbitmqConnsInfo.conns[producersInfo.producers[taskInfo->index].conn_index].connState;
 
-    for (;;) {
 
-        amqp_maybe_release_buffers(connState);
 
-        //todo 非阻塞
-        amqp_rpc_reply_t ret = amqp_publisher_confirm_wait(
-            connState,
-            &timeout,
-            &result
-        );
+    amqp_maybe_release_buffers(connState);
 
-        //todo 异常处理
-        if (AMQP_RESPONSE_LIBRARY_EXCEPTION == ret.reply_type) {
-            //todo 收到非ack帧
-            if (AMQP_STATUS_UNEXPECTED_STATE == ret.library_error) {
-                taskInfo->execInfo.info="AMQP_STATUS_UNEXPECTED_STATE is not ack frame";
-            }
-            //todo 等待确认已超时
-            else if (AMQP_STATUS_TIMEOUT == ret.library_error) {
-                // Timeout means you're done; no publisher confirms were waiting!
-                taskInfo->execInfo.info="AMQP_STATUS_TIMEOUT";
-            }
-            return -1;
+    //todo 限时等待
+    timeout.tv_sec=10;
+    amqp_rpc_reply_t ret = amqp_publisher_confirm_wait(
+        connState,
+        &timeout,
+        &result
+    );
+
+    //todo 异常处理
+    if (AMQP_RESPONSE_LIBRARY_EXCEPTION == ret.reply_type) {
+        //todo 收到非ack帧
+        if (AMQP_STATUS_UNEXPECTED_STATE == ret.library_error) {
+            taskInfo->execInfo.info="AMQP_STATUS_UNEXPECTED_STATE is not ack frame";
         }
-
-
-        //todo 需要检测该任务是否被通知stop
-        if(work_status==4){
-            return 1;//todo 非阻塞等待确认，处于死循环中需要实时检测Rabbitmq的工作状态
+        //todo 等待确认已超时
+        else if (AMQP_STATUS_TIMEOUT == ret.library_error) {
+            // Timeout means you're done; no publisher confirms were waiting!
+            taskInfo->execInfo.info="AMQP_STATUS_TIMEOUT";
         }
+        return 6;
+    }
 
-        //todo 处理rabbitmq服务发来的响应
-        {
-            switch (result.method) {
-                case 0:
-                    //todo 非阻塞等待确认，还未收到任何消息
-                    break;
-                case AMQP_BASIC_ACK_METHOD:
-                    //todo 来自rabbitmq服务的ack
-                    return 0;
-                case AMQP_BASIC_RETURN_METHOD:
-                    //mandatory=1时,消息会被服务器发回到生产者
-                    taskInfo->execInfo.info="wait confirm but AMQP_BASIC_RETURN_METHOD";
-                    return -1;
-                case AMQP_BASIC_REJECT_METHOD:
-                    taskInfo->execInfo.info="wait confirm but AMQP_BASIC_REJECT_METHOD";
-                    return -1;
-                case AMQP_BASIC_NACK_METHOD:
-                    taskInfo->execInfo.info="wait confirm but AMQP_BASIC_NACK_METHOD";
-                    return -1;
-                case AMQP_CHANNEL_CLOSE_METHOD:
-                    taskInfo->execInfo.info="wait confirm but AMQP_CHANNEL_CLOSE_METHOD";
-                    return -1;
-                case AMQP_CONNECTION_CLOSE_METHOD:
-                    taskInfo->execInfo.info="wait confirm but AMQP_CONNECTION_CLOSE_METHOD";
-                    return -1;
-                default:
-                    taskInfo->execInfo.info="wait confirm but unknown frame type";
-                    return -1;
-            };
-        }
+    //todo 处理rabbitmq服务发来的响应
+    {
+        switch (result.method) {
+            case 0:
+                //todo 非阻塞等待确认，还未收到任何消息
+                return 0;//0-正常处理(保持状态)
+            case AMQP_BASIC_ACK_METHOD:
+                //todo 来自rabbitmq服务的ack
+                taskInfo->execInfo.code=0;
+                return 1;//1-结果正常
+//            case AMQP_BASIC_RETURN_METHOD:
+//                //mandatory=1时,消息会被服务器发回到生产者
+//                taskInfo->execInfo.info="wait confirm but AMQP_BASIC_RETURN_METHOD";
+//                return 1;
+            case AMQP_BASIC_REJECT_METHOD:
+                taskInfo->execInfo.info="wait confirm but AMQP_BASIC_REJECT_METHOD";
+                return 6;//6-发布ACK失败
+            case AMQP_BASIC_NACK_METHOD:
+                taskInfo->execInfo.info="wait confirm but AMQP_BASIC_NACK_METHOD";
+                return 6;//6-发布ACK失败
+
+            case AMQP_CHANNEL_CLOSE_METHOD:
+                taskInfo->execInfo.info="wait confirm but AMQP_CHANNEL_CLOSE_METHOD";
+                return 3;//3-通道已关闭
+            case AMQP_CONNECTION_CLOSE_METHOD:
+                taskInfo->execInfo.info="wait confirm but AMQP_CONNECTION_CLOSE_METHOD";
+                return 2;//2-连接已关闭
+            default:
+                taskInfo->execInfo.info="wait confirm but unknown frame type";
+                return 6;//6-发布ACK失败
+        };
     }
 }
 void *rabbitmq_task(void * arg){
 
     //todo 任务信息
     taskInfo_t *taskInfo = (taskInfo_t *) arg;
+    
     //todo 注册退出回调函数
     pthread_cleanup_push(clean_synchronize_resources,&lock1);
 
     //todo 通知 线程已就绪
     task_notify_main_run();
-    {
-        while(1){
-            int conn_index;
-            int channel_index;
 
-            //0-生产者 1-消费者
-            if(taskInfo->type==0){
-                conn_index=producersInfo.producers[taskInfo->index].conn_index;
-                channel_index=producersInfo.producers[taskInfo->index].channel_index;
+    while(1){
+        //0-生产者 1-消费者
+        if(taskInfo->type==0){
+            rabbitmq_producer_deal(taskInfo);
+        }
+        else if(taskInfo->type==1){
+            rabbitmq_consumer_deal(taskInfo);
+        }
+        else{
+            break;
+        }
+    }
+
+    //todo 清除回调
+    pthread_cleanup_pop(0);
+    return NULL;
+}
+
+//todo 保证该函数能够处于一个while(1)并被调用
+void *rabbitmq_consumer_deal(void *arg){
+    //todo 任务信息
+    taskInfo_t *taskInfo = (taskInfo_t *) arg;
+    consumerEntity_t consumer = consumersInfo.consumers[taskInfo->index];
+    int conn_index = consumer.conn_index;
+    int channel_index = consumer.channel_index;
+
+    //todo 检查客户端运行状态
+    {
+        //todo 0-就绪
+        if (work_status == 0) {
+            sleep(1);
+            info("thread producer[%d]:wait running", taskInfo->index);
+            return NULL;
+        }
+
+            //todo 1-运行
+//        if(work_status==1){
+//            //无处理
+//        }
+
+        //todo 检查连接状态
+        //（被动）当检测到main状态处于重置时 确保任务所对应的连接是可用的
+        //todo 考虑改为限时等待（非阻塞）
+        else if (work_status == 2) {
+            task_wait_main_reset_conn(conn_index);
+        } else if (work_status == 3) {
+            task_wait_main_reset_channel(conn_index, channel_index);
+        }
+        //todo 4-stop
+        else if (work_status == 4) {
+            taskInfo->status = 4;
+            taskInfo->execInfo.code=9;
+        }
+    }
+
+    switch (taskInfo->status) {
+        //0-闲置（等待main重置连接或通道）
+        case 0:{
+
+            break;
+        }
+        //1-等待中
+        case 1: {
+            int res=0;
+
+            //分配空间
+            taskInfo->execInfo.data=NULL;
+            taskInfo->execInfo.data=malloc(255);
+
+            //todo 获取消息
+            res=get_an_message(taskInfo);
+            //0-正常处理(保持状态)
+            if(res==0){
+                break;
+            }
+            //1-结果正常
+            else if(res==1){
+                taskInfo->status=2;//2-等待中
+                break;
             }
             else{
-                conn_index=consumersInfo.consumers[taskInfo->index].conn_index;
-                channel_index=consumersInfo.consumers[taskInfo->index].channel_index;
+                taskInfo->status=3;//3-异常处理
+                break;
             }
-            //todo 0-就绪
-            if(work_status==0){
-                sleep(1);
-                info("thread producer[%d]:wait running",taskInfo->index);
-                continue;
-            }
-            //todo 1-运行
-            else if(
-                work_status==1    //todo 1-running
-                || work_status==2 //todo 2-conn重置
-                || work_status==3 //todo 3-channel重置
-            ){
-                //todo （被动）当检测到main状态处于重置时 确保任务所对应的连接是可用的
-                if(work_status==2){
-                    task_wait_main_reset_conn(conn_index);
-                }
-                else if(work_status==3){
-                    task_wait_main_reset_channel(conn_index, channel_index);
-                }
-                //todo 业务处理
-                taskInfo->execInfo.code = taskInfo->task(taskInfo);//任务只需要修改连接状态
 
-                //todo 执行结果处理
-                if(taskInfo->execInfo.code == 0){
-                    continue;
+        }
+        //2-处理消息中
+        case 2: {
+            int res=0;
+
+            //todo 注册的消费端函数-解析和处理消息内容
+            res = taskInfo->task(taskInfo);
+            taskInfo->execInfo.code = res;
+
+            //0-正常处理(保持状态)
+            if(res==0){
+                break;
+            }
+            //1-结果正常
+            else if(res==1){
+                taskInfo->status=1;//1-等待中
+                break;
+            }
+            else{
+                taskInfo->status=3;//3-异常处理
+                break;
+            }
+        }
+        //3-异常处理
+        case 3: {
+            //todo 可处理异常
+            if(
+                taskInfo->execInfo.code == 2    //2-连接已关闭
+            ){
+                //todo （主动）通知main 连接重置
+                task_notify_main_reset_conn(conn_index);
+                taskInfo->status=0;//0-闲置状态（用于等待main重置连接或通道）
+                break;
+            }
+            else if(
+                taskInfo->execInfo.code == 3    //3-通道已关闭
+            ){
+                //todo （主动）通知main 通道重置
+                task_notify_main_reset_channel(conn_index,channel_index);
+                taskInfo->status=0;//0-闲置状态（用于等待main重置连接或通道）
+                break;
+            }
+            //todo 不可处理异常
+            else{
+                //todo 通知main 停止所有线程
+                task_notify_main_stop(taskInfo);
+
+                taskInfo->status=4;//4-结束
+                break;
+            }
+        }
+        //4-结束
+        case 4: {
+            info("thread consumer[%d]: stopped, wait exit",taskInfo->index);
+
+            //todo 退出前处理
+            {
+                //todo 停止前进行资源释放
+                if(taskInfo->execInfo.data!=NULL){
+                    free(taskInfo->execInfo.data);
                 }
-                else if(
-                    taskInfo->execInfo.code == -1   //执行异常
-                    || taskInfo->execInfo.code == 1 //被通知停止 生产者ack在非阻塞等待
-                ){
-                    //todo 通知main 线程已停止
-                    task_notify_main_stop(taskInfo);
+                //todo 退出信息设置
+                if(taskInfo->execInfo.info == NULL){
+                    taskInfo->execInfo.info=get_code_info(taskInfo->execInfo.code);
+                }
+            }
+
+            //todo 通知任务已全部结束
+            task_notify_main_exit();
+
+            //todo 结束线程
+            pthread_exit(NULL);
+        }
+        default: {
+            break;
+        }
+    }
+}
+
+
+
+void *rabbitmq_producer_deal(void *arg){
+    //todo 任务信息
+    taskInfo_t *taskInfo = (taskInfo_t *) arg;
+    producerEntity_t_t producer = producersInfo.producers[taskInfo->index];
+    int conn_index = producer.conn_index;
+    int channel_index = producer.channel_index;
+
+    //todo 检查客户端运行状态
+    {
+        //todo 0-就绪
+        if (work_status == 0) {
+            sleep(1);
+            info("thread producer[%d]:wait running", taskInfo->index);
+            return NULL;
+        }
+        //todo 1-运行
+//    if(work_status==1){
+//        //无处理
+//    }
+        //todo 检查连接状态
+        //（被动）当检测到main状态处于重置时 确保任务所对应的连接是可用的
+        //todo 考虑改为限时等待（非阻塞）
+        else if (work_status == 2) {
+            task_wait_main_reset_conn(conn_index);
+        } else if (work_status == 3) {
+            task_wait_main_reset_channel(conn_index, channel_index);
+        }
+        //todo 4-stop
+        else if (work_status == 4) {
+            taskInfo->status = 5;
+            taskInfo->execInfo.code=9;
+        }
+    }
+
+    //todo 生产端状态机处理
+    {
+        switch (taskInfo->status) {
+            //0-闲置（用于等待main重置连接或通道）
+            case 0:{
+                break;
+            }
+
+            //1-等待中
+            case 1:{
+                int res=0;
+//              taskInfo->execInfo.code=0;
+                //todo 业务函数（生产端-准备待发送的数据）
+                //分配空间
+//                taskInfo->execInfo.data.len=0;
+//                taskInfo->execInfo.data.bytes=NULL;
+//                taskInfo->execInfo.data = amqp_bytes_malloc(255);
+                taskInfo->execInfo.data=NULL;
+                taskInfo->execInfo.data=malloc(255);
+
+                //todo 注册的发布端函数-准备消息
+                res = taskInfo->task(taskInfo);
+                taskInfo->execInfo.code = res;
+
+
+                //0-正常处理(保持状态)
+                if(res==0){
                     break;
                 }
-                //todo （主动）通知main 连接重置
-                else if(
-                    taskInfo->execInfo.code == 3    //3-连接已关闭
-                ){
-                    task_notify_main_reset_conn(conn_index);
+                //1-结果正常
+                else if(res==1){
+                    taskInfo->status=2;//2-发布中
+                    break;
                 }
-                //todo （主动）通知main 通道重置
-                else if(
-                    taskInfo->execInfo.code == 4    //4-通道已关闭
-                ){
-                    task_notify_main_reset_channel(conn_index,channel_index);
+                else{
+                    taskInfo->status=4;//4-异常处理
+                    break;
+                }
+
+            }
+            //2-发布中
+            case 2: {
+                producerEntity_t_t producerInfo = producersInfo.producers[taskInfo->index];
+                connectionEntity connInfo = rabbitmqConnsInfo.conns[producerInfo.conn_index];
+
+                //参数
+                amqp_connection_state_t connState = connInfo.connState;
+                int channel = connInfo.channelsInfo.channels[producerInfo.channel_index].num;
+                amqp_bytes_t exchange = amqp_cstring_bytes(exchangesInfo.exchanges[producerInfo.exchange_index].name);
+                amqp_bytes_t routingKey = amqp_cstring_bytes(producerInfo.routingKey);
+                int confirmMode = producerInfo.confirmMode;
+                int mandatory = producerInfo.mandatory;
+                int immediate = producerInfo.immediate;
+
+                amqp_basic_properties_t *props = &producerInfo.props;
+
+                //todo 消息发布
+                int res=amqp_basic_publish(
+                        connState,
+                        channel,//channel
+                        exchange,   //exchange
+                        routingKey, //routingKey
+                        mandatory,//mandatory
+                        immediate,//immediate
+                        props,//properties 消息头帧属性
+//                       taskInfo->execInfo.data//body
+                        amqp_cstring_bytes(taskInfo->execInfo.data)
+                );
+                if(res==AMQP_STATUS_OK){
+                    info("producer send:");
+                    info(taskInfo->execInfo.data);
+                    //todo 检查发布确认是否开启
+                    if(confirmMode == 1) {
+                        //已发送且需要等待确认
+                        taskInfo->status=3;//3-发布确认中
+                        return NULL;
+                    }
+                    else{
+                        //已发送无需等待确认
+                        taskInfo->status=4;//4-异常处理中
+                    }
+                }
+                else{
+                    taskInfo->status=4;//4-异常处理中
+                    taskInfo->execInfo.code=5;//5-数据发布失败
+                }
+
+                break;
+            }
+            //3-发布确认中
+            case 3: {
+                int res = wait_ack(taskInfo);//返回0 1 2 3 6
+                taskInfo->execInfo.code=res;
+
+                //0-正常处理(保持状态)
+                if(res==0){
+                    return NULL;
+                }
+                //1-结果正常
+                else if(res==1){
+                    taskInfo->status=0;
+                    break;
+                }
+                else{
+                    taskInfo->status=4;//异常处理
+                    break;
                 }
             }
-            //todo 4-stop
-            else if(work_status==4){
-                taskInfo->execInfo.code=0;
-                taskInfo->status=5;//5-结束
+            //4-异常处理中
+            case 4: {
+                //todo 可处理异常
+                if(
+                    taskInfo->execInfo.code == 2    //2-连接已关闭
+                ){
+                    //todo （主动）通知main 连接重置
+                    task_notify_main_reset_conn(conn_index);
+                    taskInfo->status=0;//0-闲置状态（用于等待main重置连接或通道）
+                    break;
+                }
+                else if(
+                    taskInfo->execInfo.code == 3    //3-通道已关闭
+                ){
+                    //todo （主动）通知main 通道重置
+                    task_notify_main_reset_channel(conn_index,channel_index);
+                    taskInfo->status=0;//0-闲置状态（用于等待main重置连接或通道）
+                    break;
+                }
+                //todo 不可处理异常
+                else{
+                    //todo 通知main 停止所有线程
+                    task_notify_main_stop(taskInfo);
 
-                //0-生产者 1-消费者
-                if(taskInfo->type==0){
-                    info("thread producer[%d]:stopped",taskInfo->index);
+                    taskInfo->status=5;//5-结束
+                    break;
                 }
-                else if(taskInfo->type==1){
-                    info("thread consumer[%d]:stopped",taskInfo->index);
-                }
+            }
+
+            //5-结束
+            case 5:{
+
+                info("thread producer[%d]: stopped, wait exit",taskInfo->index);
+
                 //todo 退出前处理
                 {
                     //todo 停止前进行资源释放
+                    if(taskInfo->execInfo.data!=0){
+                        free(taskInfo->execInfo.data);
+                    }
+                    //todo 退出信息设置
                     if(taskInfo->execInfo.info == NULL){
                         taskInfo->execInfo.info=get_code_info(taskInfo->execInfo.code);
                     }
@@ -307,112 +586,28 @@ void *rabbitmq_task(void * arg){
 
                 //todo 通知任务已全部结束
                 task_notify_main_exit();
+
+                //todo 结束线程
+                pthread_exit(NULL);
+            }
+            default: {
                 break;
             }
         }
     }
-
-    //todo 清除回调
-    pthread_cleanup_pop(0);
-
-    return NULL;
 }
 
-//todo 保证该函数能够处于一个while(1)并被调用
-void *rabbitmq_consumer_task(void * arg){
-    //todo 任务信息
-    taskInfo_t *taskInfo = (taskInfo_t *) arg;
 
-    switch (taskInfo->status) {
-        //0-等待中
-        case 0:{
+//解析 收到的定时任务消息
+int consumer_task_handle_cron_message(void * arg){
 
-            break;
-        }
-        //1-发布中
-        case 1: {
-            break;
-        }
-        //2-确认中
-        case 2: {
-            break;
-        }
-        //3-发送完
-        case 3: {
-            break;
-        }
-        //4-闲置状态
-        case 4: {
-            
-        }
-        default: {
-            break;
-        }
-    }
 }
-void *rabbitmq_producer_task(void * arg){
-    //todo 任务信息
-    taskInfo_t *taskInfo = (taskInfo_t *) arg;
-    producerEntity_t_t producer = producersInfo.producers[taskInfo->index];
-    switch (taskInfo->status) {
-        //0-等待中
-        case 0:{
-            taskInfo->execInfo.code=0;
+//准备 采集设备数据
+int producer_task_prepare_device_message(void * arg) {
 
-            //todo 状态修改
-            //收到需要数据
-            if(){
-                taskInfo->status=1;
-            }
-            break;
-        }
-        //1-发布中
-        case 1: {
-            //todo 状态修改
-            //已发送且需要等待确认
-            if(){
-                taskInfo->status=2;
-            }
-            //已发送无需等待确认
-            else if(){
-                taskInfo->status=3;
-            }
-            break;
-        }
-        //2-发布确认中
-        case 2: {
-            //确认失败
-            if(){
-                
-            }
-            //确认成功
-            else{
-                
-            }
-            break;
-        }
-        //3-发布结果处理中
-        case 3: {
-            break;
-        }
-        //4-闲置状态
-        case 4: {
-            if(taskInfo->execInfo.code==2){//重置连接
-                //等待 连接 或 连接 均无问题
-                if(
-                    rabbitmqConnsInfo.conns[producer.conn_index].status==5
-                    &&rabbitmqConnsInfo.conns[producer.conn_index].channelsInfo.channels[producer.channel_index].status==2
-                ){
-                    taskInfo->status=0;
-                }
-            }
-            if(taskInfo->execInfo.code==1){//1-被通知暂停执行
 
-            }
-        }
-        default: {
-            break;
-        }
-    }
 }
-
+//准备 设备故障数据
+int producer_task_prepare_fault_message(void * arg){
+    
+}
