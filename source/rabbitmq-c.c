@@ -115,7 +115,7 @@ RabbitmqExchanges_t exchangesInfo={
 };//交换机
 
 RabbitmqQueues_t queuesInfo={
-    .size=3,
+    .size=4,
     .queues={
         //todo 设备数据消息队列
         {
@@ -161,6 +161,17 @@ RabbitmqQueues_t queuesInfo={
             .auto_delete=0,
             //todo 指定死信交换机
 //            .args={0}
+        },
+        //todo 定时数据队列
+        {
+            .name="cornDataQueue",
+            .type=0,
+            .durability=1,
+//            .passive=1,//1-仅仅检查
+            .exclusive=0,
+            .auto_delete=0,
+            //todo 指定死信交换机
+//            .args={0}
         }
     }
 };//队列
@@ -195,7 +206,7 @@ consumers_t consumersInfo={
 //            .channel_index=1,//第1个通道不使用,自动分配可用通道
 
             //参数设置
-            .queue_index=0,
+            .queue_index=3,//todo 绑定队列（3-定时数据队列）
             .consumer_tag="consumer00",
 //            .no_local=0,
 //            .no_ack=1,
@@ -932,7 +943,8 @@ int rabbitmq_init_consumer(int consumer_index){
             warn("consumer[%d]: no available channel",consumer_index);
             return 0;
         }
-        warn("consumer[%d]: can't use the first channel,change channel_index=%d",consumer_index,channel_index);
+        consumersInfo.consumers[consumer_index].channel_index=channel_index;
+        warn("consumer[%d]: can't use the first channel,change conn[%d].channel_index=%d",consumer_index,conn_index,channel_index);
     }
     if(rabbitmq_check_channel_index(conn_index,channel_index)==0){
         warn("consumer[%d]: channel[%d] is not exists",consumer_index,channel_index);
@@ -976,6 +988,7 @@ int rabbitmq_init_consumer(int consumer_index){
     }
     
     //todo 任务信息
+    consumersInfo.consumers[consumer_index].taskInfo.status=CONSUMER_TASK_WAIT_MESSAGE;
     consumersInfo.consumers[consumer_index].taskInfo.type=1;//1-消费者
     consumersInfo.consumers[consumer_index].taskInfo.index=consumer_index;
     consumersInfo.consumers[consumer_index].taskInfo.execInfo.code=0;
@@ -1016,7 +1029,8 @@ int rabbitmq_init_producer(int producer_index){
             warn("producer[%d]: no available channel",producer_index);
             return 0;
         }
-        warn("producer[%d]: can't use the first channel,change channel_index=%d",producer_index,channel_index);
+        producersInfo.producers[producer_index].channel_index=channel_index;
+        warn("producer[%d]: can't use the first channel,change conn[%d].channel_index=%d",producer_index,conn_index,channel_index);
     }
     if(rabbitmq_check_channel_index(conn_index,channel_index)==0){
         warn("producer[%d]: channel[%d] is not exists",producer_index,channel_index);
@@ -1051,6 +1065,7 @@ int rabbitmq_init_producer(int producer_index){
     }
 
     //todo 任务信息
+    producersInfo.producers[producer_index].taskInfo.status=CONSUMER_TASK_WAIT_MESSAGE;
     producersInfo.producers[producer_index].taskInfo.type=0;//0-生产者
     producersInfo.producers[producer_index].taskInfo.index=producer_index;
     producersInfo.producers[producer_index].taskInfo.execInfo.code=0;
@@ -1185,12 +1200,12 @@ int rabbitmq_start_consumer(int index){
         warn("consumer[%d]: init fail",index);
         return 0;
     }
-    //todo 向通道 注册 任务信息的引用
-    consumerEntity_t consumer = consumersInfo.consumers[index];
-    rabbitmqConnsInfo.conns[consumer.conn_index].channelsInfo.channels[consumer.channel_index].taskInfo=&(consumersInfo.consumers[index].taskInfo);
-
-    //todo 统计 连接 的任务数量
-    rabbitmqConnsInfo.conns[consumer.conn_index].task_nums++;
+//    //todo 向通道 注册 任务信息的引用
+//    consumerEntity_t consumer = consumersInfo.consumers[index];
+//    rabbitmqConnsInfo.conns[consumer.conn_index].channelsInfo.channels[consumer.channel_index].taskInfo=&(consumersInfo.consumers[index].taskInfo);
+//
+//    //todo 统计 连接 的任务数量
+//    rabbitmqConnsInfo.conns[consumer.conn_index].task_nums++;
 
     //todo 启动线程
     return pthread_create(
@@ -1225,144 +1240,87 @@ int rabbitmq_start_consumers(){
 int get_an_message(void *arg){
     //todo 自定义返回信息
     taskInfo_t *taskInfo = (taskInfo_t *) arg;
-//    taskInfo->exitInfo.info="consumer[%d]: exited!";
-    if(taskInfo->type!=1){
-        return -1;
-    }
-    
-    consumerEntity_t consumerInfo = consumersInfo.consumers[taskInfo->index];
-    connectionEntity connInfo = rabbitmqConnsInfo.conns[consumerInfo.conn_index];
+
+    consumerEntity_t *consumerInfo = &(consumersInfo.consumers[taskInfo->index]);
+    connectionEntity *connInfo = &(rabbitmqConnsInfo.conns[consumerInfo->conn_index]);
     //参数
-    amqp_connection_state_t connState = connInfo.connState;
-    int channel_index = connInfo.channelsInfo.channels[consumerInfo.channel_index].num;
+    amqp_connection_state_t connState = connInfo->connState;
+    int channel = connInfo->channelsInfo.channels[consumerInfo->channel_index].num;
 
     {
-        amqp_rpc_reply_t res;//
-        amqp_envelope_t envelope;//用于存储消息内容
-        amqp_frame_t frame;
-        int success=0;
+        amqp_rpc_reply_t res={};//
+        amqp_frame_t frame={};
+        amqp_envelope_t *envelope=(amqp_envelope_t *)(taskInfo->execInfo.data);//用于存储消息内容
+//        amqp_envelope_t envelope;
+//        int success=0;
 
         //用于 内存优化 的关键函数
         //  注：在还未处理完消息内容(如访问envelope.message.body)前调用会导致数据丢失
-        amqp_maybe_release_buffers(connState);//，控制着库内部缓冲区的内存释放行为
+//        amqp_maybe_release_buffers(connState);//，控制着库内部缓冲区的内存释放行为
+        amqp_maybe_release_buffers_on_channel(connState, channel);
 
         //todo 非阻塞获取队列最新消息
         struct timeval timeout;
         timeout.tv_sec=0;
         timeout.tv_usec=0;
-        res = amqp_consume_message(connState, &envelope, NULL, 0);
+        res = amqp_consume_message(connState, envelope, &timeout, 0);
 
         //todo 处理消息
         if (AMQP_RESPONSE_NORMAL == res.reply_type) {
-            //todo 消费消息
-            success = consumer_message_handle(&envelope);
+            //todo 将消息内容填充到taskInfo
 
-            //todo 手动ack处理
-            if(consumerInfo.no_ack==0){
-                //todo 确认消息
-                if(success){
-                    amqp_basic_ack(
-                            connState,
-                            channel_index,//channel
-                            envelope.delivery_tag,//需要被确认消息的标识符
-                            0//批量确认
-                    );
-
-                    info("consumer: manual ack");
-                }
-                //todo 拒绝消息
-                else{
-//                    amqp_basic_reject(
-//                            connState,
-//                            channel_index,//channel
-//                            envelope.delivery_tag,//需要被拒绝消息的标识符
-//                            0 //requeue
-//                    );
-////                amqp_basic_nack(
-////                    connState,
-////                    1,//channel
-////                    envelope.delivery_tag,//需要被拒绝消息的标识符
-////                    1,//multiple 批量拒绝比当前标识小的未确认的消息
-////                    1//requeue
-////                );
-//                    info("consumer: reject requeue");
-                }
-            }
-
-            return 0;
+            return EXEC_CORRECT;//1-结果正常
         }
         //todo 异常和非预期帧处理
         else{
-            //todo 释放空间
-            amqp_destroy_envelope(&envelope);//底层会调用 amqp_destroy_message()
-            if (
-                AMQP_RESPONSE_LIBRARY_EXCEPTION == res.reply_type       //客户端Rabbitmq-c库内部错误
-                && AMQP_STATUS_UNEXPECTED_STATE == res.library_error    //协议状态机异常
-            ) {
-                //根据amqp_consume_message注释信息：此时的异常处理表示收到了 AMQP_BASIC_DELIVER_METHOD 以外的帧，
-                // 则调用方应调用 amqp_simple_wait_frame（） 来读取此帧并采取适当的操作。
-                // 主要处理跟连接关闭、通道关闭帧
-                if (AMQP_STATUS_OK != amqp_simple_wait_frame(connState, &frame)) {
-                    return -1;
+            if(AMQP_RESPONSE_LIBRARY_EXCEPTION == res.reply_type){
+                //todo 超时处理
+                if(AMQP_STATUS_TIMEOUT == res.library_error){
+                    return EXEC_NORMAL;//0-正常执行(保持状态)
                 }
-                //1.METHOD帧 方法帧
-                if (AMQP_FRAME_METHOD == frame.frame_type) {
+                else if(AMQP_STATUS_UNEXPECTED_STATE == res.library_error){
+                    //根据amqp_consume_message注释信息：此时的异常处理表示收到了 AMQP_BASIC_DELIVER_METHOD 以外的帧，
+                    // 则调用方应调用 amqp_simple_wait_frame（） 来读取此帧并采取适当的操作。
+                    // 主要处理跟连接关闭、通道关闭帧
+                    if (AMQP_STATUS_OK != amqp_simple_wait_frame(connState, &frame)) {
+                        return EXEC_CONSUMER_MESSAGE_GET_FAIL;
+                    }
+                    //1.METHOD帧 方法帧
+                    if (AMQP_FRAME_METHOD == frame.frame_type) {
 //                    frame.payload.method.id;//方法帧（类和方法信息）
 //                    frame.payload.method.decoded;//方法帧（参数信息）
-                    switch (frame.payload.method.id) {
-                        //todo 需要处理的帧(连接、通道的关闭)
-                        case AMQP_CHANNEL_CLOSE_METHOD:
-                        {
-                            /* a channel.close method happens when a channel exception occurs,
-                             * this can happen by publishing to an exchange that doesn't exist
-                             * for example.
-                             *
-                             * In this case you would need to open another channel redeclare
-                             * any queues that were declared auto-delete, and restart any
-                             * consumers that were attached to the previous channel.
-                             */
-                            warn("consumer: AMQP_CHANNEL_CLOSE_METHOD");
-                            //todo 解析关闭原因
-                            amqp_channel_close_t *r = (amqp_channel_close_t *) frame.payload.method.decoded;
-                            warn(r->reply_text.bytes);
+                        switch (frame.payload.method.id) {
+                            //todo 需要处理的帧(连接、通道的关闭)
+                            case AMQP_CHANNEL_CLOSE_METHOD:
+                            {
+                                warn("consumer[%d]: AMQP_CHANNEL_CLOSE_METHOD",taskInfo->index);
+                                //todo 解析关闭原因
+                                amqp_channel_close_t *r = (amqp_channel_close_t *) frame.payload.method.decoded;
+                                warn(r->reply_text.bytes);
 
-                            //todo 修改重置标志
-//                            rabbitmqConnsInfo.conns[consumerInfo.conn_index].channelsInfo.channels[consumerInfo.channel_index].status=0;
+                                return EXEC_CHANNEL_CLOSED;
+                            }
+                            //connect已关闭
+                            case AMQP_CONNECTION_CLOSE_METHOD:
+                            {
+                                //对同一个deliveryTag进行多次ack也会触发
+                                warn("consumer: AMQP_CONNECTION_CLOSE_METHOD");
+                                //todo 需要重新打开连接
+                                amqp_connection_close_t *r = (amqp_connection_close_t *) frame.payload.method.decoded;
+                                warn(r->reply_text.bytes);
 
-                            return 3;
-                        }
-                        //connect已关闭
-                        case AMQP_CONNECTION_CLOSE_METHOD:
-                        {
-                            /* a connection.close method happens when a connection exception
-                             * occurs, this can happen by trying to use a channel that isn't
-                             * open for example.
-                             *
-                             * In this case the whole connection must be restarted.
-                             */
-                            //对同一个deliveryTag进行多次ack也会触发
-                            warn("consumer: AMQP_CONNECTION_CLOSE_METHOD");
-                            //todo 需要重新打开连接
-                            amqp_connection_close_t *r = (amqp_connection_close_t *) frame.payload.method.decoded;
-                            warn(r->reply_text.bytes);
-
-                            //todo 修改重置标志
-                            rabbitmqConnsInfo.conns[consumerInfo.conn_index].flag_reset=1;
-                            return 2;
-                        }
-//                        //服务端投递帧(表示接下来服务端有消息发来)
-//                        case AMQP_BASIC_DELIVER_METHOD:
-//                            warn("consumer: AMQP_BASIC_DELIVER_METHOD");
-//                            break;
-                        //其它
-                        default:
-                        {
-                            //todo 非预期帧(以下帧无需消费端特别处理)
+                                return EXEC_CONN_CLOSED;//2-连接已关闭
+                            }
+                            //其它非预期帧(除AMQP_BASIC_DELIVER_METHOD和连接相关以外的帧)
+                            default:
+                            {
+                                //todo 非预期帧(以下帧无需消费端特别处理)
 //                            AMQP_BASIC_ACK_METHOD
 //                            AMQP_BASIC_RETURN_METHOD
 //                            AMQP_BASIC_DELIVER_METHOD
-                            warn("consumer: received other frame");
-                            break;
+                                warn("consumer: received other frame");
+                                return 9;
+                            }
                         }
                     }
                 }
@@ -1370,8 +1328,6 @@ int get_an_message(void *arg){
 
             return 0;
         }
-        //释放空间
-//        amqp_destroy_message(&envelope.message);
     }
 }
 //上传
@@ -1415,6 +1371,8 @@ void task_notify_main_stop(taskInfo_t *taskInfo){
 void task_notify_main_reset_conn(int conn_index){
     {
         pthread_mutex_lock(&global_task_mutex);
+        //todo 将 连接 标记为 重置
+        rabbitmqConnsInfo.conns[conn_index].flag_reset=1;
 
         //todo 通知main处理 同个连接下有多个线程，需要等待所有线程通知main,main才能重置连接，否则造成线程访问空连接问题
         rabbitmqConnsInfo.conns[conn_index].task_nums--;
@@ -1432,9 +1390,11 @@ void task_notify_main_reset_conn(int conn_index){
 void task_notify_main_reset_channel(int conn_index, int channel_index){
     {
         pthread_mutex_lock(&global_task_mutex);
+        //todo 将 连接 标记为 重置
+        rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].flag_reset=1;
 
         //todo 通知main处理
-        flag_reset_conn = 1;
+        flag_reset_channel = 1;
         pthread_cond_broadcast(&cond_deal);
 
         pthread_mutex_unlock(&global_task_mutex);
@@ -1459,7 +1419,7 @@ void task_wait_main_reset_conn(int conn_index){
     pthread_mutex_lock(&global_task_mutex);
     //todo 等待 main处理
     while(
-            rabbitmqConnsInfo.conns[conn_index].flag_reset != 0
+        rabbitmqConnsInfo.conns[conn_index].flag_reset != 0
         || rabbitmqConnsInfo.conns[conn_index].status != 5
     ){
         pthread_cond_wait(&rabbitmqConnsInfo.cond_reset_conn,&global_task_mutex);
@@ -1496,10 +1456,10 @@ void init_synchronize_tools(){
     pthread_cond_init(&cond_deal, NULL);
     pthread_cond_init(&cond_exit,NULL);
 
-
+    //连接
     pthread_cond_init(&rabbitmqConnsInfo.cond_reset_conn,NULL);
 
-
+    //通道
     for (int i = 0; i < rabbitmqConnsInfo.size; ++i) {
         pthread_cond_init(&rabbitmqConnsInfo.conns[i].channelsInfo.cond_reset_channel,NULL);
     }
@@ -1578,26 +1538,29 @@ int main_handle_reset_channels(){
             if(channel->flag_reset == 1){
                 //todo 关闭通道
                 if(rabbitmq_close_channel(i,j)==0){
+                    warn("main: channel close fail");
                     return 0;
                 }
 
                 //todo 初始化通道
                 if(rabbitmq_init_channel(i,j)==0){
-                    pthread_cond_broadcast(&(channelsInfo->cond_reset_channel));
                     warn("main: channel reopen fail");
                     return 0;
                 }
 
                 //todo 初始化角色(生产者和消费者)
                 if(init_role_by_taskInfo(channel->taskInfo)==0){
+                    warn("main: init roles fail");
                     return 0;
                 }
+
+                warn("main: conn[%d].channel[%d] reopened",i,j);
 
 //                pthread_mutex_lock(&mutex);
                 //todo 清除重置标志
                 channel->flag_reset=0;
                 //todo 通知等待该通道重置道德任务线程
-                pthread_cond_broadcast(&channelsInfo->cond_reset_channel);
+                pthread_cond_broadcast(&(channelsInfo->cond_reset_channel));
 //                pthread_mutex_unlock(&mutex);
             }
         }
@@ -1625,6 +1588,7 @@ int main_handle_reset_conns(){
                 return 0;
             }
 
+            warn("main: conn[%d] reopened",i);
 
 //            pthread_mutex_lock(&mutex);
             //todo 清除重置标志
@@ -1640,9 +1604,11 @@ int main_handle_reset_conns(){
 int consumer_message_handle(const amqp_envelope_t *envelope){
 
     //工具函数-显示接收到的数据
-    pthread_mutex_lock(&log_mutex);
-    amqp_dump(envelope->message.body.bytes, envelope->message.body.len);
-    pthread_mutex_unlock(&log_mutex);
+//    pthread_mutex_lock(&log_mutex);
+//    amqp_dump(envelope->message.body.bytes, envelope->message.body.len);
+//    pthread_mutex_unlock(&log_mutex);
+
+
 
 
     //todo zc-业务处理逻辑
@@ -1693,6 +1659,7 @@ int rabbitmq_start_client(){
 
     if(rabbitmq_init_client()==0){
         warn("rabbitmq client: init fail");
+        return 0;
     }
     else{
 //        //todo 设置流的缓冲类型 无缓冲
@@ -1714,7 +1681,7 @@ int rabbitmq_start_client(){
             pthread_mutex_lock(&global_task_mutex);
             warn("main: locked");
 
-            work_status=0;
+            work_status=CLIENT_STATUS_READY;
             warn("main: status=%d",work_status);
 
             //todo 等待 运行
@@ -1722,8 +1689,8 @@ int rabbitmq_start_client(){
                 warn("main: wait cond_running,work_status=%d",work_status);
                 pthread_cond_wait(&cond_running, &global_task_mutex);
             }
-            sleep(5);
-            work_status=1;
+            sleep(1);
+            work_status=CLIENT_STATUS_RUNNING;
             warn("main: status=%d",work_status);
 
             //todo 等待 stop
@@ -1734,32 +1701,32 @@ int rabbitmq_start_client(){
 
                 //todo 检查是否有连接重置处理
                 if(flag_reset_conn == 1){
-                    work_status=2;
+                    work_status=CLIENT_STATUS_RESETTING_CONN;
                     warn("main: status=%d",work_status);
 
                     //todo 检查和处理连接重置
                     if(main_handle_reset_conns()==0){
                         goto exit;
                     }
-
+                    flag_reset_conn=0;
                 }
                 //todo 检查是否有通道重置处理
                 if(flag_reset_channel == 1){
-                    work_status=3;
+                    work_status=CLIENT_STATUS_RESETTING_CHANNEL;
                     warn("main: status=%d",work_status);
 
                     //todo 检查和处理通道重置
                     if(main_handle_reset_channels()==0){
                         goto exit;
                     }
-
+                    flag_reset_conn=0;
 
                 }
-                work_status=1;
+                work_status=CLIENT_STATUS_RUNNING;
                 warn("main: status=%d",work_status);
             }
 exit:
-            work_status=4;
+            work_status=CLIENT_STATUS_STOPPING_TASKS;
             warn("main: status=%d",work_status);
 
             warn("main: close all threads,work_status=%d",work_status);
@@ -1770,7 +1737,7 @@ exit:
                 pthread_cond_wait(&cond_exit,&global_task_mutex);
 
             }
-            work_status=5;
+            work_status=CLIENT_STATUS_EXIT;
             warn("main: status=%d",work_status);
 
 //        //todo 等待 terminated
@@ -1786,9 +1753,10 @@ exit:
 
             //todo 打印退出信息
             log_threads_exitInfo();
-
         }
     }
     //todo 释放锁和条件变量资源
     destroy_synchronize_tools();
+
+    return 1;
 }

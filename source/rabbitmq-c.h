@@ -42,13 +42,52 @@ typedef struct {
 }RabbitmqConfig_t;//连接登录信息
 
 //任务信息
+enum enum_exec_code_t{
+    EXEC_ERROR=-1,                  //-1-执行异常
+    EXEC_NORMAL,                    //0-正常执行(保持状态)
+    EXEC_CORRECT,                   //1-结果正常
+
+    EXEC_CONN_CLOSED,               //2-连接已关闭
+    EXEC_CHANNEL_CLOSED,            //3-通道已关闭
+
+    EXEC_PRODUCE_DATA_PREPARE_FAIL, //4-数据准备失败
+    EXEC_PRODUCER_PUBLISH_FAIL,     //5-数据发布失败
+    EXEC_PRODUCER_CONFIRM_FAIL,     //6-发布ACK失败
+
+    EXEC_CONSUMER_MESSAGE_GET_FAIL, //7-消息获取失败
+    EXEC_CONSUMER_MESSAGE_REJECT,   //8-拒绝消息
+
+    EXEC_UNKNOWN_FRAME,             //9-非预期帧
+    EXEC_NOTIFIED_STOP              //10-被通知停止运行
+};
+enum producer_task_status_t{
+    PRODUCER_TASK_IDLE=0,
+    PRODUCER_TASK_WAIT_DATA,
+    PRODUCER_TASK_PUBLISH,
+    PRODUCER_TASK_CONFIRM,
+    PRODUCER_TASK_HANDLE_EXCEPTION,
+    PRODUCER_TASK_EXIT
+};
+enum consumer_task_status_t{
+    CONSUMER_TASK_IDLE=0,
+    CONSUMER_TASK_WAIT_MESSAGE,
+    CONSUMER_TASK_HANDLE_MESSAGE,
+    CONSUMER_TASK_HANDLE_EXCEPTION,
+    CONSUMER_TASK_EXIT
+};
+//typedef struct{
+//    amqp_envelope_t envelope;//由amqp_consume_message填充
+//    char *message;
+//    char *exchange;
+//    char *routing_key;;
+//}message_t;
 typedef int (*task_t) (void *);
 typedef struct{
-    int code;//0-正常处理(保持状态) 1-结果正常 2-连接已关闭 3-通道已关闭 4-数据准备失败 5-数据发布失败 6-发布ACK失败 | 7-手动ACK失败 | 8-非预期帧 | 9-被通知停止运行 10-被通知闲置
+    int code;//-1-执行异常 0-正常执行(保持状态) 1-结果正常 2-连接已关闭 3-通道已关闭 4-数据准备失败 5-数据发布失败 6-发布ACK失败 | 7-消息获取失败 8-拒绝消息 | 9-非预期帧 | 10-被通知停止运行
     char *info;//执行信息
     void *data;//生产者-从控制板接收到的数据，用于发布  消费者-从rabbit服务获取到的数据，用于解析
 }execInfo_t;
-typedef struct {
+typedef struct taskInfoStruct{
     int type;//0-生产者 1-消费者
     int index;//下标
     int status;//状态 生产者（0-闲置（等待main重置连接或通道） 1-等待中 2-发布中 3-确认中 4-异常处理 5-结束）
@@ -65,7 +104,7 @@ typedef struct{
 //    int conn_index;//连接索引
     int num;//通道号（1-65535）: a.队列、交换机、绑定声明使用 b.生产者专用通道 c.消费者专用通道
     int status;//标志位: 0-关闭 1-可用 2-已被线程使用
-    int flag_reset;//重置标记位
+    int flag_reset;//重置标记位 0-无重置 1-需要重置
     taskInfo_t *taskInfo;
 }channelEntity_t;
 typedef struct{
@@ -91,7 +130,7 @@ typedef struct{
     pthread_cond_t cond_reset_conn;//用于main通知子线程连接重置情况
 }connectionsInfo_t;//包含连接、通道信息
 
-#define QUEUE_MAX_SIZE 3
+#define QUEUE_MAX_SIZE 4
 typedef struct {
     int type;//0-整数 1-字符串 3-布尔
     char *key;
@@ -218,6 +257,14 @@ extern pthread_mutex_t log_mutex;//用于日志输出
 extern pthread_mutex_t global_task_mutex;//用于主线程和任务线程通讯
 
 extern volatile int thread_counts;
+enum client_work_status_t{
+    CLIENT_STATUS_READY=0,          //0-ready就绪
+    CLIENT_STATUS_RUNNING,          //1-running运行
+    CLIENT_STATUS_RESETTING_CONN,   //2-conn重置
+    CLIENT_STATUS_RESETTING_CHANNEL,//3-channel重置
+    CLIENT_STATUS_STOPPING_TASKS,   //4-stop停止
+    CLIENT_STATUS_EXIT              //5-exit
+};
 extern volatile int work_status;//0-ready就绪 1-running运行 2-conn重置 3-channel重置 4-stop停止 5-exit
 
 extern volatile int flag_running;
@@ -322,9 +369,9 @@ int wait_ack(taskInfo_t *taskInfo);
 void *rabbitmq_producer_deal(void *arg);
 
 //业务函数 非阻塞 后续扩展阻塞支持
-int consumer_task_handle_cron_message(void * arg);//解析转发 定时消息数据
-int producer_task_prepare_device_message(void * arg);//准备 采集设备数据
-int producer_task_prepare_fault_message(void * arg);//准备 设备故障数据
+int consumer_task_handle_cron_message(void *arg);//解析转发 定时消息数据
+int producer_task_prepare_device_message(void *arg);//准备 采集设备数据
+int producer_task_prepare_fault_message(void *arg);//准备 设备故障数据
 
 //业务函数 注：此类函数处于while循环中，仅负责单次操作，每次操作完必须返回操作结果
 int producer_task_upload_device_data(void *arg);//上传 采集设备数据
