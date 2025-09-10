@@ -13,9 +13,14 @@
 #include <stdio.h>
 
 //todo 宏定义
-#define ROUTING_KEY_PLC_DATA "work.upload"
-#define ROUTING_KEY_FAULT_REPORTS "work.fault"
-#define ROUTING_KEY_DEAD_LETTER "deadRoutingKeyExample"
+#define BINDING_KEY_PLC_DATA "work.upload.*"
+#define BINDING_KEY_FAULT_REPORTS "work.fault.*"
+#define BINDING_KEY_DEAD_LETTER "work.dead"
+
+//发布用的路由键
+#define ROUTING_KEY_PLC_DATA "work.upload.demo"
+#define ROUTING_KEY_FAULT_REPORTS "work.fault.demo"
+
 //交换机参数
 #define ARGUMENT_EXCHANGE_ALTER "alternate-exchange"
 //队列参数
@@ -61,31 +66,25 @@ enum enum_exec_code_t{
     EXEC_NOTIFIED_STOP              //10-被通知停止运行
 };
 enum producer_task_status_t{
-    PRODUCER_TASK_IDLE=0,
-    PRODUCER_TASK_WAIT_DATA,
-    PRODUCER_TASK_PUBLISH,
-    PRODUCER_TASK_CONFIRM,
-    PRODUCER_TASK_HANDLE_EXCEPTION,
-    PRODUCER_TASK_EXIT
+    PRODUCER_TASK_IDLE=0,           //0-闲置（等待main重置连接或通道）
+    PRODUCER_TASK_WAIT_DATA,        //1-等待中
+    PRODUCER_TASK_PUBLISH,          //2-发布中
+    PRODUCER_TASK_CONFIRM,          //3-确认中
+    PRODUCER_TASK_HANDLE_EXCEPTION, //4-异常处理
+    PRODUCER_TASK_EXIT              //5-结束
 };
 enum consumer_task_status_t{
-    CONSUMER_TASK_IDLE=0,
-    CONSUMER_TASK_WAIT_MESSAGE,
-    CONSUMER_TASK_HANDLE_MESSAGE,
-    CONSUMER_TASK_HANDLE_EXCEPTION,
-    CONSUMER_TASK_EXIT
+    CONSUMER_TASK_IDLE=0,           //0-闲置（等待main重置连接或通道）
+    CONSUMER_TASK_WAIT_MESSAGE,     //1-等待中
+    CONSUMER_TASK_HANDLE_MESSAGE,   //2-处理消息中
+    CONSUMER_TASK_HANDLE_EXCEPTION, //3-异常处理
+    CONSUMER_TASK_EXIT              //4-结束
 };
-//typedef struct{
-//    amqp_envelope_t envelope;//由amqp_consume_message填充
-//    char *message;
-//    char *exchange;
-//    char *routing_key;;
-//}message_t;
 typedef int (*task_t) (void *);
 typedef struct{
     int code;//-1-执行异常 0-正常执行(保持状态) 1-结果正常 2-连接已关闭 3-通道已关闭 4-数据准备失败 5-数据发布失败 6-发布ACK失败 | 7-消息获取失败 8-拒绝消息 | 9-非预期帧 | 10-被通知停止运行
     char *info;//执行信息
-    void *data;//生产者-从控制板接收到的数据，用于发布  消费者-从rabbit服务获取到的数据，用于解析
+    void *data;//使用堆空间需要释放 生产者-char[255]从控制板接收到的数据，用于发布  消费者-从rabbit服务获取到的数据，用于解析
 }execInfo_t;
 typedef struct taskInfoStruct{
     int type;//0-生产者 1-消费者
@@ -101,8 +100,11 @@ typedef struct taskInfoStruct{
 //连接和通道信息
 #define CHANNEL_MAX_SIZE 3
 typedef struct{
-//    int conn_index;//连接索引
-    int num;//通道号（1-65535）: a.队列、交换机、绑定声明使用 b.生产者专用通道 c.消费者专用通道
+    //通道号（1-65535） 通道号可以不设置，默认为index+1
+    //不建议手动设置，如果手动设置，需要保证通道不被重复
+    //当打开通道失败时自动修改通道值，最多再尝试5次
+    int num;
+
     int status;//标志位: 0-关闭 1-可用 2-已被线程使用
     int flag_reset;//重置标记位 0-无重置 1-需要重置
     taskInfo_t *taskInfo;
@@ -365,6 +367,7 @@ void *rabbitmq_task(void *arg);
 int get_an_message(void *arg);//下拉 定时数据
 void *rabbitmq_consumer_deal(void *arg);
 
+int publish_an_message(void *arg);
 int wait_ack(taskInfo_t *taskInfo);
 void *rabbitmq_producer_deal(void *arg);
 
@@ -400,15 +403,17 @@ int main_handle_reset_conns();
 void log_threads_exitInfo();
 //日志打印
 void vlog(FILE *fd,char *str,va_list args);
-void log(FILE *fd ,char *str,...);
-void info(char *str,...);
-void warn(char *str,...);
+void info(FILE *fd , char *str, ...);
+void infoLn(char *str, ...);
+void warnLn(char *str, ...);
 
+//调试打印信息
 void print_lock_info(const pthread_mutex_t *mutex);
 void print_cond_info(const pthread_cond_t *cond);
 void print_synchronized_info(const pthread_mutex_t *mutex,const pthread_cond_t *cond);
 
-
+void print_rcv_message(amqp_envelope_t *envelope);
+void print_send_message(taskInfo_t *taskInfo);
 
 
 #endif //C_RABBITMQDEMO_RABBITMQ_C_H

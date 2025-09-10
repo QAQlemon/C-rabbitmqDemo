@@ -23,9 +23,8 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d37117ee-6323-43db-931c-5f8935bd59a7" name="更改" comment="">
+    <list default="true" id="d37117ee-6323-43db-931c-5f8935bd59a7" name="更改" comment="基本完成生产端和消费端的状态机处理，待处理部分BUG">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/demo/demo.c" beforeDir="false" afterPath="$PROJECT_DIR$/demo/demo.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/main.c" beforeDir="false" afterPath="$PROJECT_DIR$/source/main.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/rabbitmq-c.c" beforeDir="false" afterPath="$PROJECT_DIR$/source/rabbitmq-c.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/rabbitmq-c.h" beforeDir="false" afterPath="$PROJECT_DIR$/source/rabbitmq-c.h" afterDir="false" />
@@ -179,7 +178,8 @@
       <workItem from="1757299829699" duration="1025000" />
       <workItem from="1757300882290" duration="19337000" />
       <workItem from="1757378679548" duration="24959000" />
-      <workItem from="1757407744128" duration="2462000" />
+      <workItem from="1757407744128" duration="2557000" />
+      <workItem from="1757468290038" duration="24653000" />
     </task>
     <task id="LOCAL-00001" summary="start">
       <option name="closed" value="true" />
@@ -333,7 +333,15 @@
       <option name="project" value="LOCAL" />
       <updated>1757323939519</updated>
     </task>
-    <option name="localTasksCounter" value="20" />
+    <task id="LOCAL-00020" summary="基本完成生产端和消费端的状态机处理，待处理部分BUG">
+      <option name="closed" value="true" />
+      <created>1757410274866</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1757410274866</updated>
+    </task>
+    <option name="localTasksCounter" value="21" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -383,18 +391,10 @@
     <MESSAGE value="posix可重入锁内层同步块的wait操作不能完全释放锁资源，仅作计数-1，当可重入锁计数为0才会真正释放锁。而java的await操作即使在最内层同步块也会立即释放所资源，无此问题" />
     <MESSAGE value="重构任务交互过程，新增任务状态，每个任务以状态机方式进行处理" />
     <MESSAGE value="初步完成生产者的状态机处理，消费者的状态机处理待完善" />
-    <option name="LAST_COMMIT_MESSAGE" value="初步完成生产者的状态机处理，消费者的状态机处理待完善" />
+    <MESSAGE value="基本完成生产端和消费端的状态机处理，待处理部分BUG" />
+    <option name="LAST_COMMIT_MESSAGE" value="基本完成生产端和消费端的状态机处理，待处理部分BUG" />
   </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/source/rabbitmq-c.c</url>
-          <line>1699</line>
-          <option name="timeStamp" value="40" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
     <watches-manager>
       <configuration name="CMakeRunConfiguration">
         <watch expression="rabbitmqConfigInfo" />

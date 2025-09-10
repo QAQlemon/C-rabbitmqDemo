@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <malloc.h>
-//#include "stdio.h"
+#include "stdio.h"
 #include "time.h"
 #include "memory.h"
 
@@ -19,17 +19,17 @@ void *test(void * args){
 
 
     pthread_mutex_lock(&lock1);
-    warn("thread: get lock ");
+    warnLn("thread: get lock ");
 
     flag=1;
 //    pthread_cond_broadcast(&cond1);
-    warn("thread: pre signal");
+    warnLn("thread: pre signal");
 //    print_synchronized_info(&lock1,&cond1);
 
 //    pthread_cond_signal(&cond1);
     pthread_cond_wait(&cond1,&lock1);
 
-    warn("thread: signal");
+    warnLn("thread: signal");
 //    print_synchronized_info(&lock1,&cond1);
 
     pthread_mutex_unlock(&lock1);
@@ -38,16 +38,16 @@ void *test(void * args){
 //    fgets(buf,10,stdin);
 
     pthread_mutex_lock(&lock1);
-    warn("thread: get lock ");
+    warnLn("thread: get lock ");
     pthread_mutex_unlock(&lock1);
 
     return NULL;
 }
 void release_resources(void *arg){
-    info("thread exit");
+    infoLn("thread exit");
     pthread_mutex_t *p_lock = (pthread_mutex_t *) arg;
     if( p_lock->__data.__owner==syscall(SYS_gettid)){
-        warn("clean: unlock");
+        warnLn("clean: unlock");
         pthread_mutex_unlock(p_lock);
     }
 }
@@ -55,15 +55,15 @@ void *test01(void * args){
     pthread_cleanup_push(release_resources,&lock1);
 
     pthread_mutex_lock(&lock1);
-    info("thread wait");
+            infoLn("thread wait");
 
 //    pthread_cond_wait(&cond1,&lock1);
 //    sleep(100);
 
-    info("thread wake up");
+            infoLn("thread wake up");
 
     pthread_mutex_unlock(&lock1);
-    info("thread unlock");
+            infoLn("thread unlock");
 
     pthread_cleanup_pop(0);
 
@@ -132,7 +132,7 @@ int main(){
 //            warn("main: get locked 2");
 //            print_synchronized_info(&lock1,&cond1);
 //
-////            warn("main: unlock 1");
+////            warnLn("main: unlock 1");
 ////            pthread_mutex_unlock(&lock1);
 ////            print_synchronized_info(&lock1,&cond1);
 //
@@ -140,7 +140,7 @@ int main(){
 ////
 ////            while(flag!=1){
 ////                timeout.tv_sec=time(NULL)+5;
-////                warn("main: wait");
+////                warnLn("main: wait");
 ////                print_synchronized_info(&lock1,&cond1);
 ////                pthread_cond_timedwait(&cond1,&lock1,&timeout);
 ////            }
@@ -265,7 +265,7 @@ void *rabbitmq_consumer_deal(void *arg){
         //todo 0-就绪
         if (work_status == CLIENT_STATUS_READY) {
             sleep(1);
-            info("thread producer[%d]:wait running", taskInfo->index);
+            infoLn("thread consumer[%d]:wait running", taskInfo->index);
             return NULL;
         }
 
@@ -341,43 +341,49 @@ void *rabbitmq_consumer_deal(void *arg){
                 break;
             }
             else{
-                //todo 手动ack处理
-                if(consumer.no_ack==0){
-                    //todo 确认消息
-                    if(res==1){
-                        amqp_basic_ack(
-                                rabbitmqConnsInfo.conns[conn_index].connState,
-                                rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].num,//channel
-                                ((amqp_envelope_t *)(taskInfo->execInfo.data))->delivery_tag,//需要被确认消息的标识符
-                                0//批量确认
-                        );
-
-                        info("consumer[%d]: manual ack",taskInfo->index);
-
-                        taskInfo->status=CONSUMER_TASK_WAIT_MESSAGE;//1-等待中
-                    }
-                    //todo 拒绝消息
-                    else if(res==8){
-                        amqp_basic_reject(
-                                rabbitmqConnsInfo.conns[conn_index].connState,
-                                rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].num,//channel
-                                ((amqp_envelope_t *)(taskInfo->execInfo.data))->delivery_tag,//需要被拒绝消息的标识符
-                                1 //requeue
-                        );
-////                amqp_basic_nack(
-////                    connState,
-////                    1,//channel
-////                    envelope.delivery_tag,//需要被拒绝消息的标识符
-////                    1,//multiple 批量拒绝比当前标识小的未确认的消息
-////                    1//requeue
-////                );
-                        info("consumer: reject requeue");
-
-                        taskInfo->status=CONSUMER_TASK_WAIT_MESSAGE;//1-等待中
-                    }
-                }
                 if(res==EXEC_ERROR){
                     taskInfo->status=CONSUMER_TASK_HANDLE_EXCEPTION;//3-异常处理
+                }
+                else{
+                    //todo 手动ack处理
+                    if(consumer.no_ack==0){
+                        //todo 确认消息
+                        if(res==EXEC_CORRECT){
+                            amqp_basic_ack(
+                                    rabbitmqConnsInfo.conns[conn_index].connState,
+                                    rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].num,//channel
+                                    ((amqp_envelope_t *)(taskInfo->execInfo.data))->delivery_tag,//需要被确认消息的标识符
+                                    0//批量确认
+                            );
+
+                            infoLn("consumer[%d]: manual ack", taskInfo->index);
+
+                            taskInfo->status=CONSUMER_TASK_WAIT_MESSAGE;//1-等待中
+                        }
+                        //todo 拒绝消息
+                        else if(res==EXEC_CONSUMER_MESSAGE_REJECT){
+                            amqp_basic_reject(
+                                    rabbitmqConnsInfo.conns[conn_index].connState,
+                                    rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].num,//channel
+                                    ((amqp_envelope_t *)(taskInfo->execInfo.data))->delivery_tag,//需要被拒绝消息的标识符
+                                    1 //requeue
+                            );
+//                            amqp_basic_nack(
+//                                connState,
+//                                1,//channel
+//                                envelope.delivery_tag,//需要被拒绝消息的标识符
+//                                1,//multiple 批量拒绝比当前标识小的未确认的消息
+//                                1//requeue
+//                            );
+                            infoLn("consumer[%d]: reject requeue", taskInfo->index);
+
+                            taskInfo->status=CONSUMER_TASK_WAIT_MESSAGE;//1-等待中
+                        }
+                    }
+                    else if(consumer.no_ack==1){
+                        infoLn("consumer[%d]: auto ack", taskInfo->index);
+                        taskInfo->status=CONSUMER_TASK_WAIT_MESSAGE;//1-等待中
+                    }
                 }
 
                 //todo 释放消息资源
@@ -416,7 +422,7 @@ void *rabbitmq_consumer_deal(void *arg){
         }
         //4-结束
         case CONSUMER_TASK_EXIT: {
-            info("thread consumer[%d]: stopped, wait exit",taskInfo->index);
+            infoLn("thread consumer[%d]: stopped, wait exit", taskInfo->index);
 
             //todo 退出前处理
             {
@@ -446,7 +452,89 @@ void *rabbitmq_consumer_deal(void *arg){
 }
 
 
+int publish_an_message(void *arg){
+    //todo 任务信息
+    taskInfo_t *taskInfo = (taskInfo_t *) arg;
 
+    producerEntity_t_t *producerInfo = &(producersInfo.producers[taskInfo->index]);
+    connectionEntity *connInfo = &(rabbitmqConnsInfo.conns[producerInfo->conn_index]);
+
+    //参数
+    amqp_connection_state_t connState = connInfo->connState;
+    int channel = connInfo->channelsInfo.channels[producerInfo->channel_index].num;
+    amqp_bytes_t exchange = amqp_cstring_bytes(exchangesInfo.exchanges[producerInfo->exchange_index].name);
+    amqp_bytes_t routingKey = amqp_cstring_bytes(producerInfo->routingKey);
+    int confirmMode = producerInfo->confirmMode;
+    int mandatory = producerInfo->mandatory;
+    int immediate = producerInfo->immediate;
+
+    amqp_basic_properties_t *props = &(producerInfo->props);
+
+    //todo 消息发布
+    int res=amqp_basic_publish(
+            connState,
+            channel,//channel
+            exchange,   //exchange
+            routingKey, //routingKey
+            mandatory,//mandatory
+            immediate,//immediate
+            props,//properties 消息头帧属性
+//                       taskInfo->execInfo.data//body
+            amqp_cstring_bytes(taskInfo->execInfo.data)
+    );
+    if(res==AMQP_STATUS_OK){
+        infoLn("=======================================");
+        infoLn("producer[%d] send: len=%d", taskInfo->index, strlen(taskInfo->execInfo.data));
+        infoLn(">%s",taskInfo->execInfo.data);
+        return EXEC_CORRECT;
+    }
+    else{
+        amqp_frame_t frame={};
+        amqp_rpc_reply_t reply = amqp_get_rpc_reply(connState);
+        if(reply.library_error==AMQP_STATUS_UNEXPECTED_STATE){
+            if (AMQP_STATUS_OK != amqp_simple_wait_frame(connState, &frame)) {
+                return EXEC_CONSUMER_MESSAGE_GET_FAIL;
+            }
+            //1.METHOD帧 方法帧
+            if (AMQP_FRAME_METHOD == frame.frame_type) {
+                switch (frame.payload.method.id) {
+                    //todo 需要处理的帧(连接、通道的关闭)
+                    case AMQP_CHANNEL_CLOSE_METHOD:
+                    {
+                        warnLn("producer[%d]: AMQP_CHANNEL_CLOSE_METHOD", taskInfo->index);
+                        //todo 解析关闭原因
+                        amqp_channel_close_t *r = (amqp_channel_close_t *) frame.payload.method.decoded;
+                        warnLn(r->reply_text.bytes);
+
+                        return EXEC_CHANNEL_CLOSED;
+                    }
+                    //connect已关闭
+                    case AMQP_CONNECTION_CLOSE_METHOD:
+                    {
+                        //对同一个deliveryTag进行多次ack也会触发
+                        warnLn("producer[%d]: AMQP_CONNECTION_CLOSE_METHOD", taskInfo->index);
+                        //todo 需要重新打开连接
+                        amqp_connection_close_t *r = (amqp_connection_close_t *) frame.payload.method.decoded;
+                        warnLn(r->reply_text.bytes);
+
+                        return EXEC_CONN_CLOSED;//2-连接已关闭
+                    }
+                        //其它非预期帧(除AMQP_BASIC_DELIVER_METHOD和连接相关以外的帧)
+                    default:
+                    {
+                        //todo 非预期帧(以下帧无需消费端特别处理)
+//                            AMQP_BASIC_ACK_METHOD
+//                            AMQP_BASIC_RETURN_METHOD
+//                            AMQP_BASIC_DELIVER_METHOD
+                        warnLn("producer[%d]: received other frame", taskInfo->index);
+                        return EXEC_UNKNOWN_FRAME;
+                    }
+                }
+            }
+        }
+    }
+
+}
 void *rabbitmq_producer_deal(void *arg){
     //todo 任务信息
     taskInfo_t *taskInfo = (taskInfo_t *) arg;
@@ -458,8 +546,8 @@ void *rabbitmq_producer_deal(void *arg){
     {
         //todo 0-就绪
         if (work_status == CLIENT_STATUS_READY) {
-            sleep(1);
-            info("thread producer[%d]:wait running", taskInfo->index);
+            sleep(2);
+            infoLn("thread producer[%d]:wait running", taskInfo->index);
             return NULL;
         }
         //todo 1-运行
@@ -509,11 +597,11 @@ void *rabbitmq_producer_deal(void *arg){
                 taskInfo->execInfo.code = res;
 
 
-                //0-正常处理(保持状态)
+                //0-正常处理(保持状态,本次执行无消息数据)
                 if(res==EXEC_NORMAL){
                     break;
                 }
-                //1-结果正常
+                //1-结果正常（数据准备成功）
                 else if(res==EXEC_CORRECT){
                     taskInfo->status=PRODUCER_TASK_PUBLISH;//2-发布中
                     break;
@@ -528,35 +616,14 @@ void *rabbitmq_producer_deal(void *arg){
             case PRODUCER_TASK_PUBLISH: {
                 producerEntity_t_t *producerInfo = &(producersInfo.producers[taskInfo->index]);
                 connectionEntity *connInfo = &(rabbitmqConnsInfo.conns[producerInfo->conn_index]);
-
-                //参数
-                amqp_connection_state_t connState = connInfo->connState;
-                int channel = connInfo->channelsInfo.channels[producerInfo->channel_index].num;
-                amqp_bytes_t exchange = amqp_cstring_bytes(exchangesInfo.exchanges[producerInfo->exchange_index].name);
-                amqp_bytes_t routingKey = amqp_cstring_bytes(producerInfo->routingKey);
-                int confirmMode = producerInfo->confirmMode;
-                int mandatory = producerInfo->mandatory;
-                int immediate = producerInfo->immediate;
-
-                amqp_basic_properties_t *props = &(producerInfo->props);
-
-                //todo 消息发布
-                int res=amqp_basic_publish(
-                        connState,
-                        channel,//channel
-                        exchange,   //exchange
-                        routingKey, //routingKey
-                        mandatory,//mandatory
-                        immediate,//immediate
-                        props,//properties 消息头帧属性
-//                       taskInfo->execInfo.data//body
-                        amqp_cstring_bytes(taskInfo->execInfo.data)
-                );
-                if(res==AMQP_STATUS_OK){
-                    info("producer send:");
-                    info(taskInfo->execInfo.data);
+                //todo 发布一条消息
+                int res=publish_an_message(taskInfo);
+                if(res==EXEC_CORRECT){
+                    infoLn("=======================================");
+                    infoLn("producer[%d] send: len=%d", taskInfo->index, strlen(taskInfo->execInfo.data));
+                    infoLn(">%s",taskInfo->execInfo.data);
                     //todo 检查发布确认是否开启
-                    if(confirmMode == 1) {
+                    if(producerInfo->confirmMode == 1) {
                         //已发送且需要等待确认
                         taskInfo->status=PRODUCER_TASK_CONFIRM;//3-发布确认中
                         break;
@@ -569,12 +636,13 @@ void *rabbitmq_producer_deal(void *arg){
                 }
                 else{
                     taskInfo->status=PRODUCER_TASK_HANDLE_EXCEPTION;//4-异常处理中
-                    taskInfo->execInfo.code=EXEC_PRODUCER_PUBLISH_FAIL;//5-数据发布失败
+//                    taskInfo->execInfo.code=EXEC_PRODUCER_PUBLISH_FAIL;//5-数据发布失败
                     break;
                 }
             }
             //3-发布确认中
             case PRODUCER_TASK_CONFIRM: {
+                //todo 发布端confirm处理
                 int res = wait_ack(taskInfo);//返回0 1 2 3 6 9
                 taskInfo->execInfo.code=res;
 
@@ -624,7 +692,7 @@ void *rabbitmq_producer_deal(void *arg){
             //5-结束
             case PRODUCER_TASK_EXIT:{
 
-                info("thread producer[%d]: stopped, wait exit",taskInfo->index);
+                infoLn("thread producer[%d]: stopped, wait exit", taskInfo->index);
 
                 //todo 退出前处理
                 {
@@ -654,61 +722,101 @@ void *rabbitmq_producer_deal(void *arg){
 }
 
 
-//解析 收到的定时任务消息
+
+/*
+@desc   解析收到的定时任务消息
+@param  arg 包含任务信息，以及消息内容((amqp_envelope_t *))(((taskInfo_t *) arg)->execInfo_t.data)
+@return EXEC_CORRECT    消息正常ACK处理
+        EXEC_CONSUMER_MESSAGE_REJECT    拒绝消息
+        EXEC_ERROR  消息处理异常
+*/
 int consumer_task_handle_cron_message(void *arg){
     //todo 任务信息
     taskInfo_t *taskInfo = (taskInfo_t *) arg;
 
     //todo 提取消息内容
     amqp_envelope_t *envelope = (amqp_envelope_t *) taskInfo->execInfo.data;
-    char message[255]={0};
-    strncpy(message,envelope->message.body.bytes,envelope->message.body.len);
-//    char exchange[50]={0};
-//    strncpy(message,envelope->message.body.bytes,envelope->message.body.len);
-//    char routing_key[50]={0};
-//    strncpy(message,envelope->message.body.bytes,envelope->message.body.len);
 
-    char buffer[255];
-    char *format="from channel[%d]: exchange=";
-    sprintf(buffer,format,envelope->channel);
-    strncat(buffer,envelope->exchange.bytes,envelope->exchange.len);
-
-
-
-    //todo 处理消息
-    info("============================================================");
-    info("from channel[%d]: exchange=%s,routing_key=%s,redelivered=%d",
-        envelope->channel,
-        envelope->exchange.bytes,
-        envelope->routing_key.bytes,
-        envelope->redelivered
-     );
-    info("content: len=%d\n>%s",
-        envelope->message.body.len,
-        message
-    );
-
+    //打印消息信息
+    print_rcv_message(envelope);
 
 
 //    //todo 消息处理异常
 //    return EXEC_ERROR;
 
+//    //TODO 拒绝消息
+//    return EXEC_CONSUMER_MESSAGE_REJECT;
+
     //todo 消息处理没问题
     return EXEC_CORRECT;
 }
-//准备 采集设备数据
+/*
+@desc   解析收到的定时任务消息
+@param  arg 包含任务信息，以及消息内容((amqp_envelope_t *))(((taskInfo_t *) arg)->execInfo_t.data)
+@return EXEC_NORMAL     正常执行（本次执行暂无数据）
+        EXEC_CORRECT    数据准备成功
+        EXEC_PRODUCE_DATA_PREPARE_FAIL  数据准备失败
+ */
 int producer_task_prepare_device_message(void *arg) {
     //todo 任务信息
     taskInfo_t *taskInfo = (taskInfo_t *) arg;
 
+    //todo 填充数据
+    //正常返回数据
+//    {
+////        taskInfo->execInfo.data;
+//////    info("producer[%d]>")
+////        info(stdout, "producer[%d]>",taskInfo->index);
+////        fgets(taskInfo->execInfo.data,255,stdin);
+//
+//
+//        strcat(taskInfo->execInfo.data,"test1");
+//        sleep(3);
+//
+//
+//        return EXEC_CORRECT;
+//    }
 
-    return EXEC_NORMAL;
+    //暂无数据
+    {
+        return EXEC_NORMAL;
+    }
+
+//    //数据准备失败
+//    {
+//        return EXEC_PRODUCE_DATA_PREPARE_FAIL;
+//    }
+
 }
 //准备 设备故障数据
 int producer_task_prepare_fault_message(void *arg){
     //todo 任务信息
     taskInfo_t *taskInfo = (taskInfo_t *) arg;
 
+    //todo 填充数据
+    //正常返回数据
+//    {
+////        taskInfo->execInfo.data;
+//////    info("producer[%d]>")
+////        info(stdout, "producer[%d]>",taskInfo->index);
+////        fgets(taskInfo->execInfo.data,255,stdin);
+//
+//
+//        strcat(taskInfo->execInfo.data,"test2");
+//        sleep(5);
+//
+//
+//        return EXEC_CORRECT;
+//    }
 
-    return EXEC_NORMAL;
+    //暂无数据
+    {
+        return EXEC_NORMAL;
+    }
+
+//    //数据准备失败
+//    {
+//        return EXEC_PRODUCE_DATA_PREPARE_FAIL;
+//    }
+
 }

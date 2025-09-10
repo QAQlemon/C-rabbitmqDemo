@@ -5,6 +5,7 @@
 #include <bits/types/struct_timeval.h>
 #include <sys/syscall.h>
 #include <fcntl.h>
+#include <malloc.h>
 
 #include "rabbitmq-c.h"
 
@@ -181,35 +182,35 @@ RabbitmqBinds_t bindsInfo= {
     .binds={
         //连接状态 通道 路由键 队列 交换机
         {
-            .routingKey=ROUTING_KEY_PLC_DATA,
+            .routingKey=BINDING_KEY_PLC_DATA,
             .exchange_index=0,
             .queue_index=0//设备数据消息队列
         },
         {
-            .routingKey=ROUTING_KEY_FAULT_REPORTS,
+            .routingKey=BINDING_KEY_FAULT_REPORTS,
             .exchange_index=0,
             .queue_index=1//设备故障消息队列
         },
         {
-            .routingKey=ROUTING_KEY_DEAD_LETTER,
+            .routingKey=BINDING_KEY_DEAD_LETTER,
             .exchange_index=1,//死信交换机
             .queue_index=2//死信队列
         },
     }
 };
 consumers_t consumersInfo={
-    .size=1,
+    .size=1,//注：需要保证至少一个任务，否则client启动失败
     .consumers={
         //todo 消费者
         {
             .conn_index=1,
-//            .channel_index=1,//第1个通道不使用,自动分配可用通道
+//            .channel_index=1,//第1个通道不使用,自动根据连接分配可用通道
 
             //参数设置
             .queue_index=3,//todo 绑定队列（3-定时数据队列）
-            .consumer_tag="consumer00",
+            .consumer_tag="consumer00",//可由rabbitmq服务端自动分配标识符
 //            .no_local=0,
-//            .no_ack=1,
+            .no_ack=1,
 //            .exclusive=0,
 //            .requeue=0,
 
@@ -220,16 +221,18 @@ consumers_t consumersInfo={
     }
 };
 producers_t producersInfo={
-    .size=2,
+    .size=2,//注：需要保证至少一个任务，否则client启动失败
     .producers={
         //todo 生产者 采集设备数据
         {
             .conn_index=0,
-//            .channel_index=1,//第1个通道不使用,自动分配可用通道
+//            .channel_index=1,//第1个通道不使用,自动根据连接分配可用通道
 
             //参数设置
             .exchange_index=0,
             .confirmMode=0,
+            .routingKey=ROUTING_KEY_PLC_DATA,//发布时的routingKey
+
             //todo 消息持久化设置
             .props={
                 ._flags=AMQP_BASIC_DELIVERY_MODE_FLAG,
@@ -247,7 +250,8 @@ producers_t producersInfo={
             //参数设置
             .exchange_index=0,
             .confirmMode=0,
-            
+            .routingKey=ROUTING_KEY_FAULT_REPORTS,
+
             //todo 消息持久化设置
             .props={
                 ._flags=AMQP_BASIC_DELIVERY_MODE_FLAG,
@@ -261,28 +265,28 @@ producers_t producersInfo={
 
 };
 void log_threads_exitInfo(){
-    info("========================(exitInfo)==========================");
+    infoLn("========================(exitInfo)==========================");
     //todo 生产者
     for (int i = 0; i < producersInfo.size; ++i) {
-        info("producer[%d] exitInfo:",i);
-        info("code: %d",producersInfo.producers[i].taskInfo.execInfo.code);
-        info("info: %s",producersInfo.producers[i].taskInfo.execInfo.info);
-        info("");
+        infoLn("producer[%d] exitInfo:", i);
+        infoLn("code: %d", producersInfo.producers[i].taskInfo.execInfo.code);
+        infoLn("infoLn: %s", producersInfo.producers[i].taskInfo.execInfo.info);
+        infoLn("");
     }
 
     //todo 消费者
     for (int i = 0; i < consumersInfo.size; ++i) {
-        info("consumer[%d] exitInfo:",i);
-        info("code: %d",consumersInfo.consumers[i].taskInfo.execInfo.code);
-        info("info: %s",consumersInfo.consumers[i].taskInfo.execInfo.info);
-        info("");
+        infoLn("consumer[%d] exitInfo:", i);
+        infoLn("code: %d", consumersInfo.consumers[i].taskInfo.execInfo.code);
+        infoLn("infoLn: %s", consumersInfo.consumers[i].taskInfo.execInfo.info);
+        infoLn("");
     }
 }
 
 void vlog(FILE *fd,char *str,va_list args){
     vfprintf(fd,str,args);
 }
-void log(FILE *fd ,char *str,...){
+void info(FILE *fd , char *str, ...){
     va_list list;
 
     pthread_mutex_lock(&log_mutex);
@@ -294,7 +298,7 @@ void log(FILE *fd ,char *str,...){
 
     pthread_mutex_unlock(&log_mutex);
 }
-void info(char *str,...){
+void infoLn(char *str, ...){
     va_list list;
 
     pthread_mutex_lock(&log_mutex);
@@ -307,7 +311,7 @@ void info(char *str,...){
 
     pthread_mutex_unlock(&log_mutex);
 }
-void warn(char *str,...){
+void warnLn(char *str, ...){
     va_list list;
 
     pthread_mutex_lock(&log_mutex);
@@ -322,49 +326,100 @@ void warn(char *str,...){
 }
 
 void print_lock_info(const pthread_mutex_t *mutex){
-    log(stdout,"mutex: {data = {lock = %d, count = %d, owner = %d, nusers = %d, kind = %d, spins = %d, elision = %d}}\n",
-        mutex->__data.__lock,
-        mutex->__data.__count,
-        mutex->__data.__owner,
-        mutex->__data.__nusers,
-        mutex->__data.__kind,
-        mutex->__data.__spins,
-        mutex->__data.__elision
+    warnLn(
+            "mutex: {data = {lock = %d, count = %d, owner = %d, nusers = %d, kind = %d, spins = %d, elision = %d}}\n",
+            mutex->__data.__lock,
+            mutex->__data.__count,
+            mutex->__data.__owner,
+            mutex->__data.__nusers,
+            mutex->__data.__kind,
+            mutex->__data.__spins,
+            mutex->__data.__elision
     );
 }
 void print_cond_info(const pthread_cond_t *cond){
-    log(stdout,"cond: {data = {"
-               "wseq = {value64 =%d, value32 = {low =%d, high =%d}}, "
-               "g1_start = {value64 =%d, value32 = {low =%d, high =%d}}, "
-               "g_refs = {%d,%d}, "
-               "g_size = {%d,%d}, "
-               "g1_orig_size =%d, "
-               "wrefs =%d, "
-               "g_signals = {%d,%d}}}\n",
-        cond->__data.__wseq.__value64,
-        cond->__data.__wseq.__value32.__low,
-        cond->__data.__wseq.__value32.__high,
-        cond->__data.__g1_start.__value64,
-        cond->__data.__g1_start.__value32.__low,
-        cond->__data.__g1_start.__value32.__high,
-        cond->__data.__g_refs[0],
-        cond->__data.__g_refs[1],
-        cond->__data.__g_size[0],
-        cond->__data.__g_size[1],
-        cond->__data.__g1_orig_size,
-        cond->__data.__wrefs,
-        cond->__data.__g_signals[0],
-        cond->__data.__g_signals[1]
+    warnLn("cond: {data = {"
+           "wseq = {value64 =%d, value32 = {low =%d, high =%d}}, "
+           "g1_start = {value64 =%d, value32 = {low =%d, high =%d}}, "
+           "g_refs = {%d,%d}, "
+           "g_size = {%d,%d}, "
+           "g1_orig_size =%d, "
+           "wrefs =%d, "
+           "g_signals = {%d,%d}}}\n",
+           cond->__data.__wseq.__value64,
+           cond->__data.__wseq.__value32.__low,
+           cond->__data.__wseq.__value32.__high,
+           cond->__data.__g1_start.__value64,
+           cond->__data.__g1_start.__value32.__low,
+           cond->__data.__g1_start.__value32.__high,
+           cond->__data.__g_refs[0],
+           cond->__data.__g_refs[1],
+           cond->__data.__g_size[0],
+           cond->__data.__g_size[1],
+           cond->__data.__g1_orig_size,
+           cond->__data.__wrefs,
+           cond->__data.__g_signals[0],
+           cond->__data.__g_signals[1]
     );
 }
 
 void print_synchronized_info(const pthread_mutex_t *mutex,const pthread_cond_t *cond){
-    warn("---------------------");
+    warnLn("---------------------");
     print_lock_info(mutex);
     print_cond_info(cond);
-    warn("---------------------");
+    warnLn("---------------------");
 }
+void print_rcv_message(amqp_envelope_t *envelope){
+    //todo 提取消息内容
 
+    char tmp[128]={0};
+    char res[256]={0};
+    char *buffer=NULL;
+
+    sprintf(tmp,"from channel[%d]:",envelope->channel);
+    strcat(res,tmp);
+
+    strcat(res," exchange=");
+    strncat(res,envelope->exchange.bytes,envelope->exchange.len);
+
+    strcat(res,",routing_key=");
+    strncat(res,envelope->routing_key.bytes,envelope->routing_key.len);
+
+    sprintf(tmp,",redelivered=%d",envelope->redelivered);
+    strcat(res,tmp);
+
+    sprintf(tmp,",delivery_tag=%lu",envelope->delivery_tag);
+    strcat(res,tmp);
+
+    infoLn("============================================================");
+    //消息基本信息
+    infoLn("%s", res);
+
+    //消息内容
+    memset(res,0,256);
+    if(envelope->message.body.len>256){
+        warnLn("message: truncated,len=%d,max=%d", envelope->message.body.len, 256);
+        buffer= malloc(envelope->message.body.len+1);
+        strncat(buffer,envelope->message.body.bytes,envelope->message.body.len);
+
+        infoLn("content: len=%d\n>%s",
+               envelope->message.body.len,//不包括‘\0’
+               buffer
+        );
+
+        free(buffer);
+    }
+    else{
+        strncat(res,envelope->message.body.bytes,envelope->message.body.len);
+        infoLn("content: len=%d\n>%s",
+               envelope->message.body.len,
+               res
+        );
+    }
+}
+void print_send_message(taskInfo_t *taskInfo){
+
+}
 
 //todo check函数
 int rabbitmq_check_conn_index(int conn_index){
@@ -372,7 +427,7 @@ int rabbitmq_check_conn_index(int conn_index){
         (conn_index >= CONNECTION_MAX_SIZE)
         || (conn_index < 0 || conn_index >= rabbitmqConnsInfo.size)
     ){
-        warn("conns: index=%d,size=%d,max=%d",conn_index,rabbitmqConnsInfo.size,CONNECTION_MAX_SIZE);
+        warnLn("conns: index=%d,size=%d,max=%d", conn_index, rabbitmqConnsInfo.size, CONNECTION_MAX_SIZE);
         return 0;
     }
     else{
@@ -387,10 +442,10 @@ int rabbitmq_check_channel_index(int conn_index,int channel_index){
         (channel_index >= CHANNEL_MAX_SIZE)
         || (channel_index < 0 || channel_index >= rabbitmqConnsInfo.conns[conn_index].channelsInfo.size)
     ){
-        warn("channel: conn_index=%d,channel_index=%d,size=%d,max=%d",
-             conn_index,channel_index,
-             rabbitmqConnsInfo.conns[conn_index].channelsInfo.size,
-             CHANNEL_MAX_SIZE
+        warnLn("channel: conn_index=%d,channel_index=%d,size=%d,max=%d",
+               conn_index, channel_index,
+               rabbitmqConnsInfo.conns[conn_index].channelsInfo.size,
+               CHANNEL_MAX_SIZE
         );
         return 0;
     }
@@ -404,7 +459,7 @@ int rabbitmq_check_queue_index(int queue_index){
         (queue_index >= QUEUE_MAX_SIZE)
         || (queue_index<0 || queue_index>=queuesInfo.size)
     ){
-        warn("queue: index=%d,size=%d,max=%d",queue_index,queuesInfo.size,QUEUE_MAX_SIZE);
+        warnLn("queue: index=%d,size=%d,max=%d", queue_index, queuesInfo.size, QUEUE_MAX_SIZE);
         return 0;
     }
     else{
@@ -418,7 +473,7 @@ int rabbitmq_check_exchange_index(int exchange_index){
         (exchange_index >= EXCHANGE_MAX_SIZE)
         ||(exchange_index<0 || exchange_index>=exchangesInfo.size)
     ){
-        warn("exchange: index=%d,size=%d,max=%d",exchange_index,exchangesInfo.size,EXCHANGE_MAX_SIZE);
+        warnLn("exchange: index=%d,size=%d,max=%d", exchange_index, exchangesInfo.size, EXCHANGE_MAX_SIZE);
         return 0;
     }
     else{
@@ -430,7 +485,7 @@ int rabbitmq_check_bind_index(int bind_index){
         (bind_index>=BIND_MAX_SIZE)
         || (bind_index<0 || bind_index>=bindsInfo.size)
     ){
-        warn("bind check: fail,bind_index=%d",bind_index);
+        warnLn("bind check: fail,bind_index=%d", bind_index);
         return 0;
     }
 
@@ -466,7 +521,7 @@ int rabbitmq_reset_channels(int conn_index){
     }
     int size = rabbitmqConnsInfo.conns[conn_index].channelsInfo.size;
     if(size > CHANNEL_MAX_SIZE){
-        warn("conns: size=%d,max=%d",size,CHANNEL_MAX_SIZE);
+        warnLn("conns: size=%d,max=%d", size, CHANNEL_MAX_SIZE);
         return 0;
     }
     else{
@@ -474,7 +529,7 @@ int rabbitmq_reset_channels(int conn_index){
         for (int i = 0; i < rabbitmqConnsInfo.conns[conn_index].channelsInfo.size; ++i) {
             flag&=rabbitmq_reset_channel(conn_index,i);
             if(flag==0){
-                warn("conn[%d] reset: channel[%d] fail",conn_index,i);
+                warnLn("conn[%d] reset: channel[%d] fail", conn_index, i);
                 break;
             }
         }
@@ -504,7 +559,7 @@ int rabbitmq_reset_conn(int conn_index){
 int rabbitmq_reset_conns(){
     int size = rabbitmqConnsInfo.size;
     if(size > CONNECTION_MAX_SIZE){
-        warn("conns: size=%d,max=%d",size,CONNECTION_MAX_SIZE);
+        warnLn("conns: size=%d,max=%d", size, CONNECTION_MAX_SIZE);
         return 0;
     }
     else{
@@ -512,7 +567,7 @@ int rabbitmq_reset_conns(){
         for (int i = 0; i < rabbitmqConnsInfo.size; ++i) {
             flag&=rabbitmq_reset_conn(i);
             if(flag==0){
-                warn("conn[%d] reset: fail",i);
+                warnLn("conn[%d] reset: fail", i);
                 break;
             }
         }
@@ -530,7 +585,7 @@ int rabbitmq_close_channel(int conn_index,int channel_index){
     }
 
     int res=0;
-    if(rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].status==1){
+    if(rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].status > 0){
         amqp_rpc_reply_t reply = amqp_channel_close(
             rabbitmqConnsInfo.conns[conn_index].connState,
             rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].num,
@@ -549,7 +604,7 @@ int rabbitmq_close_channels(int conn_index){
     }
     int size = rabbitmqConnsInfo.conns[conn_index].channelsInfo.size;
     if(size > CHANNEL_MAX_SIZE){
-        warn("conns: size=%d,max=%d",size,CONNECTION_MAX_SIZE);
+        warnLn("conns: size=%d,max=%d", size, CONNECTION_MAX_SIZE);
         return 0;
     }
     else{
@@ -557,7 +612,7 @@ int rabbitmq_close_channels(int conn_index){
         for (int i = 0; i < size; ++i) {
             flag&=rabbitmq_close_channel(conn_index,i);
             if(flag==0){
-                warn("conn[%d]:channel[%d] close fail",conn_index,i);
+                warnLn("conn[%d]:channel[%d] close fail", conn_index, i);
                 break;
             }
         }
@@ -573,18 +628,26 @@ int rabbitmq_close_conn(int conn_index){
         int conn_status = rabbitmqConnsInfo.conns[conn_index].status;
         if(conn_status == 5){
             //todo 关闭通道
-            if(rabbitmq_close_channels(conn_index)==0){
+            //注：当连接断开时，无需处理通道和连接的关闭，经测试，连接已关闭情况下再关闭通道或连接会导致错误
+            if(
+                rabbitmqConnsInfo.conns[conn_index].flag_reset==0
+                &&rabbitmq_close_channels(conn_index)==0
+            ){
                 return 0;
             }
         }
         if(conn_status >= 2){
             //todo 关闭连接
-            amqp_rpc_reply_t reply= amqp_connection_close(
-                    rabbitmqConnsInfo.conns[conn_index].connState,
-                    AMQP_REPLY_SUCCESS
-            );
-            if(die_on_amqp_error(reply,"closing connection")==1){
-                return 0;
+            //注：当连接断开时，无需处理通道和连接的关闭，经测试，连接已关闭情况下再关闭通道或连接会导致错误
+            if(rabbitmqConnsInfo.conns[conn_index].flag_reset==0){
+                //todo 关闭连接
+                amqp_rpc_reply_t reply= amqp_connection_close(
+                        rabbitmqConnsInfo.conns[conn_index].connState,
+                        AMQP_REPLY_SUCCESS
+                );
+                if(die_on_amqp_error(reply,"closing connection")==1){
+                    return 0;
+                }
             }
         }
         if(conn_status >= 1){
@@ -593,14 +656,14 @@ int rabbitmq_close_conn(int conn_index){
                     rabbitmqConnsInfo.conns[conn_index].connState
             );
         }
-        //todo reset连接资源
+        //todo reset连接资源(包括reset通道)
         return rabbitmq_reset_conn(conn_index);
     }
 }
 int rabbitmq_close_conns(){
     int size = rabbitmqConnsInfo.size;
     if(size <= 0 ||size > CONNECTION_MAX_SIZE){
-        warn("conns: size=%d,max=%d",size,CONNECTION_MAX_SIZE);
+        warnLn("conns: size=%d,max=%d", size, CONNECTION_MAX_SIZE);
         return 0;
     }
     else{
@@ -608,7 +671,7 @@ int rabbitmq_close_conns(){
         for (int i = 0; i < size; ++i) {
             flag&=rabbitmq_close_conn(i);
             if(flag==0){
-                warn("conn[%d]: close fail",i);
+                warnLn("conn[%d]: close fail", i);
                 break;
             }
         }
@@ -644,8 +707,12 @@ int rabbitmq_init_channel(int conn_index,int channel_index){
                 }
                 else{
                     if(retry>5){
+                        warnLn("channel init: has tried 5 times,but fail");
                         break;
                     }
+                    warnLn("channel init: open fail,num=%d",
+                           rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].num);
+
                     //todo 通道打开失败 修改当前的通道号 new_channel=old_channel+size
                     rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].num += CHANNEL_MAX_SIZE;
                     retry++;
@@ -663,7 +730,7 @@ int rabbitmq_init_channels(int conn_index){
 
     int size = rabbitmqConnsInfo.conns[conn_index].channelsInfo.size;
     if(size <= 0 ||size > CHANNEL_MAX_SIZE){
-        warn("channel: size=%d,max=%d",size,CHANNEL_MAX_SIZE);
+        warnLn("channel: size=%d,max=%d", size, CHANNEL_MAX_SIZE);
         return 0;
     }
 
@@ -672,7 +739,7 @@ int rabbitmq_init_channels(int conn_index){
         for (int i = 0; i < rabbitmqConnsInfo.conns[conn_index].channelsInfo.size; ++i) {
             flag&=rabbitmq_init_channel(conn_index,i);
             if(flag==0){
-                warn("channel[%d] int: fail",i);
+                warnLn("channel[%d] int: fail", i);
                 break;
             }
         }
@@ -707,7 +774,7 @@ int rabbitmq_init_conn(int conn_index){
         amqp_connection_state_t pConn = amqp_new_connection();
         rabbitmqConnsInfo.conns[conn_index].status=1;
         if(pConn == NULL){
-            warn("conn[%d] init: create fail",conn_index);
+            warnLn("conn[%d] init: create fail", conn_index);
             rabbitmq_close_conn(conn_index);
             return 0;
         }
@@ -717,7 +784,7 @@ int rabbitmq_init_conn(int conn_index){
         amqp_socket_t *socket = amqp_tcp_socket_new(pConn);
         rabbitmqConnsInfo.conns[conn_index].status=2;
         if(socket == NULL){
-            warn("conn[%d] init: socket create fail",conn_index);
+            warnLn("conn[%d] init: socket create fail", conn_index);
             rabbitmq_close_conn(conn_index);
             return 0;
         }
@@ -730,11 +797,11 @@ int rabbitmq_init_conn(int conn_index){
                 rabbitmqConfigInfo.port
         );
         if(res != AMQP_STATUS_OK){
-            warn("conn[%d] init: socket open fail,host=%s,port=%d",
-                 conn_index,
-                 rabbitmqConfigInfo.hostname,
-                 rabbitmqConfigInfo.port
-             );
+            warnLn("conn[%d] init: socket open fail,host=%s,port=%d",
+                   conn_index,
+                   rabbitmqConfigInfo.hostname,
+                   rabbitmqConfigInfo.port
+            );
             rabbitmq_close_conn(conn_index);
             return 0;
         }
@@ -761,7 +828,7 @@ int rabbitmq_init_conn(int conn_index){
 int rabbitmq_init_conns(){
     int size = rabbitmqConnsInfo.size;
     if(size <= 0 ||size > CONNECTION_MAX_SIZE){
-        warn("conns: size=%d,max=%d",size,CONNECTION_MAX_SIZE);
+        warnLn("conns: size=%d,max=%d", size, CONNECTION_MAX_SIZE);
         return 0;
     }
     else{
@@ -776,7 +843,7 @@ int rabbitmq_init_conns(){
         for (int i = 0; i < size; ++i) {
             flag &= rabbitmq_init_conn(i);//todo 需要保证初始化失败时释放已申请的连接资源，并完成重置
             if(flag==0){
-                warn("conn[%d] init: fail",i);
+                warnLn("conn[%d] init: fail", i);
                 break;
             }
         }
@@ -895,11 +962,11 @@ int rabbitmq_init_bind(int bind_index){
         RabbitmqBindEntity_t bind = bindsInfo.binds[bind_index];
 
         if(rabbitmq_check_exchange_index(bind.exchange_index) == 0){
-            warn("bind check: fail ,exchange_index=%d",bind.exchange_index);
+            warnLn("bind check: fail ,exchange_index=%d", bind.exchange_index);
             return 0;
         }
         if(rabbitmq_check_queue_index(bind.queue_index) == 0){
-            warn("bind check: fail ,queue_index=%d",bind.queue_index);
+            warnLn("bind check: fail ,queue_index=%d", bind.queue_index);
             return 0;
         }
 
@@ -927,7 +994,7 @@ int rabbitmq_init_consumer(int consumer_index){
 
     //todo 检查索引下标(消费者、连接、通道、队列)
     if(consumer_index<0 || consumer_index>=CONSUMER_MAX_SIZE){
-        warn("consumer: index=%d,max=%d",consumer_index,CONSUMER_MAX_SIZE);
+        warnLn("consumer: index=%d,max=%d", consumer_index, CONSUMER_MAX_SIZE);
         return 0;
     }
 
@@ -940,25 +1007,26 @@ int rabbitmq_init_consumer(int consumer_index){
     if(channel_index==0){
         channel_index = get_available_channel(conn_index);
         if(channel_index==0){
-            warn("consumer[%d]: no available channel",consumer_index);
+            warnLn("consumer[%d]: no available channel", consumer_index);
             return 0;
         }
         consumersInfo.consumers[consumer_index].channel_index=channel_index;
-        warn("consumer[%d]: can't use the first channel,change conn[%d].channel_index=%d",consumer_index,conn_index,channel_index);
+        warnLn("consumer[%d]: can't use the first channel,change conn[%d].channel_index=%d", consumer_index, conn_index,
+               channel_index);
     }
     if(rabbitmq_check_channel_index(conn_index,channel_index)==0){
-        warn("consumer[%d]: channel[%d] is not exists",consumer_index,channel_index);
+        warnLn("consumer[%d]: channel[%d] is not exists", consumer_index, channel_index);
         return 0;
     }
     //队列检查
     if(rabbitmq_check_queue_index(queue_index) == 0){
-        warn("consumer[%d]: queue[%d] index check fail",consumer_index,queue_index);
+        warnLn("consumer[%d]: queue[%d] index check fail", consumer_index, queue_index);
         return 0;
     }
 
     //检查任务
     if(consumersInfo.consumers[consumer_index].taskInfo.task==NULL){
-        warn("consumer[%d]: task is null",consumer_index);
+        warnLn("consumer[%d]: task is null", consumer_index);
         return 0;
     }
 
@@ -1013,7 +1081,7 @@ int rabbitmq_init_producer(int producer_index){
         (producer_index>=PRODUCER_MAX_SIZE)
         ||(producer_index<0 || producer_index>=producersInfo.size)
     ){
-        warn("producer: index=%d,max=%d",producer_index,PRODUCER_MAX_SIZE);
+        warnLn("producer: index=%d,max=%d", producer_index, PRODUCER_MAX_SIZE);
         return 0;
     }
 
@@ -1026,24 +1094,25 @@ int rabbitmq_init_producer(int producer_index){
     if(channel_index==0){
         channel_index = get_available_channel(conn_index);
         if(channel_index==0){
-            warn("producer[%d]: no available channel",producer_index);
+            warnLn("producer[%d]: no available channel", producer_index);
             return 0;
         }
         producersInfo.producers[producer_index].channel_index=channel_index;
-        warn("producer[%d]: can't use the first channel,change conn[%d].channel_index=%d",producer_index,conn_index,channel_index);
+        warnLn("producer[%d]: can't use the first channel,change conn[%d].channel_index=%d", producer_index, conn_index,
+               channel_index);
     }
     if(rabbitmq_check_channel_index(conn_index,channel_index)==0){
-        warn("producer[%d]: channel[%d] is not exists",producer_index,channel_index);
+        warnLn("producer[%d]: channel[%d] is not exists", producer_index, channel_index);
         return 0;
     }
     //交换机
     if(rabbitmq_check_exchange_index(exchange_index) == 0){
-        warn("producer[%d]: exchange[%d] index check fail",producer_index,exchange_index);
+        warnLn("producer[%d]: exchange[%d] index check fail", producer_index, exchange_index);
         return 0;
     }
     //检查任务
     if(producersInfo.producers[producer_index].taskInfo.task==NULL){
-        warn("producer[%d]: task is null",producer_index);
+        warnLn("producer[%d]: task is null", producer_index);
         return 0;
     }
 
@@ -1065,7 +1134,16 @@ int rabbitmq_init_producer(int producer_index){
     }
 
     //todo 任务信息
-    producersInfo.producers[producer_index].taskInfo.status=CONSUMER_TASK_WAIT_MESSAGE;
+    if(
+        producersInfo.producers[producer_index].taskInfo.execInfo.data!=NULL
+        &&strlen(producersInfo.producers[producer_index].taskInfo.execInfo.data)!=0
+    ){
+        //todo 处理断连前已准备好的数据
+        producersInfo.producers[producer_index].taskInfo.status=PRODUCER_TASK_PUBLISH;//2-发布中
+    }
+    else{
+        producersInfo.producers[producer_index].taskInfo.status=PRODUCER_TASK_WAIT_DATA;//1-等待中
+    }
     producersInfo.producers[producer_index].taskInfo.type=0;//0-生产者
     producersInfo.producers[producer_index].taskInfo.index=producer_index;
     producersInfo.producers[producer_index].taskInfo.execInfo.code=0;
@@ -1084,12 +1162,12 @@ int rabbitmq_init_producer(int producer_index){
     return 1;
 }
 int init_role_by_taskInfo(taskInfo_t *taskInfo){
-    if(taskInfo->type==0){
+    if(taskInfo->type==0){//0-生产者
         if(rabbitmq_init_producer(taskInfo->index)==0){
             return 0;
         }
     }
-    else{
+    else if(taskInfo->type==1){//1-消费者
         if(rabbitmq_init_consumer(taskInfo->index)==0){
             return 0;
         }
@@ -1100,10 +1178,15 @@ int init_roles_of_conn(int conn_index){
     connectionEntity conn = rabbitmqConnsInfo.conns[conn_index];
     for (int i = 0; i < conn.channelsInfo.size; ++i) {
         taskInfo_t *taskInfo = conn.channelsInfo.channels[i].taskInfo;
-        
-        if(init_role_by_taskInfo(taskInfo) == 0){
-            return 0;
+        if(taskInfo==NULL){
+            continue;
         }
+        else{
+            if(init_role_by_taskInfo(taskInfo) == 0){
+                return 0;
+            }
+        }
+
     }
     return 1;
 }
@@ -1130,12 +1213,35 @@ int get_available_channel(int conn_index){
 //根据code设置执行信息
 char *get_code_info(int exit_code){
     switch (exit_code) {
-        case -1:
-            return "exit with error";
-        case 0:
-            return "exit normally";
-        case 1:
-            return "stop to exit";
+        case EXEC_ERROR:
+            return "exec with error";
+        case EXEC_NORMAL:
+            return "exec normally";
+        case EXEC_CORRECT:
+            return "exec correct";
+
+        case EXEC_CONN_CLOSED:
+            return "conn closed";
+        case EXEC_CHANNEL_CLOSED:
+            return "channel closed";
+
+        case EXEC_PRODUCE_DATA_PREPARE_FAIL:
+            return "data prepare fail";
+        case EXEC_PRODUCER_PUBLISH_FAIL:
+            return "publish fail";
+        case EXEC_PRODUCER_CONFIRM_FAIL:
+            return "confirm fail";
+
+        case EXEC_CONSUMER_MESSAGE_GET_FAIL:
+            return "message get fail";
+
+        case EXEC_UNKNOWN_FRAME:
+            return "unknown frame";
+        case EXEC_NOTIFIED_STOP:
+            return "notified stop";
+
+        default:
+            return "unknown";
     }
 }
 
@@ -1155,7 +1261,7 @@ int get_task_num_of_conn(int conn_index){
 int rabbitmq_start_producer(int index){
     //todo 初始化生产者结构体
     if(rabbitmq_init_producer(index)==0){
-        warn("producer[%d]: init fail",index);
+        warnLn("producer[%d]: init fail", index);
         return 0;
     }
 //    producersInfo.producers[index].taskInfo.index=index;
@@ -1177,7 +1283,7 @@ int rabbitmq_start_producer(int index){
 }
 int rabbitmq_start_producers(){
     if(producersInfo.size<=0 || producersInfo.size>PRODUCER_MAX_SIZE){
-        warn("producers start: size=%d,max=%d",producersInfo.size,PRODUCER_MAX_SIZE);
+        warnLn("producers start: size=%d,max=%d", producersInfo.size, PRODUCER_MAX_SIZE);
         return 0;
     }
     else{
@@ -1185,7 +1291,7 @@ int rabbitmq_start_producers(){
         for (int i = 0; i < producersInfo.size; ++i) {
             flag&=rabbitmq_start_producer(i);
             if(flag==0){
-                warn("producer[%d] start: fail",i);
+                warnLn("producer[%d] start: fail", i);
                 break;
             }
         }
@@ -1197,7 +1303,7 @@ int rabbitmq_start_producers(){
 int rabbitmq_start_consumer(int index){
     //todo 初始化消费者结构体
     if(rabbitmq_init_consumer(index)==0){
-        warn("consumer[%d]: init fail",index);
+        warnLn("consumer[%d]: init fail", index);
         return 0;
     }
 //    //todo 向通道 注册 任务信息的引用
@@ -1217,7 +1323,7 @@ int rabbitmq_start_consumer(int index){
 }
 int rabbitmq_start_consumers(){
     if(consumersInfo.size<=0 || consumersInfo.size>CONSUMER_MAX_SIZE){
-        warn("consumers start: size=%d,max=%d",consumersInfo.size,CONSUMER_MAX_SIZE);
+        warnLn("consumers start: size=%d,max=%d", consumersInfo.size, CONSUMER_MAX_SIZE);
         return 0;
     }
     else{
@@ -1225,7 +1331,7 @@ int rabbitmq_start_consumers(){
         for (int i = 0; i < consumersInfo.size; ++i) {
             flag&=rabbitmq_start_consumer(i);
             if(flag==0){
-                warn("consumer[%d] start: fail");
+                warnLn("consumer[%d] start: fail");
                 break;
             }
         }
@@ -1293,10 +1399,10 @@ int get_an_message(void *arg){
                             //todo 需要处理的帧(连接、通道的关闭)
                             case AMQP_CHANNEL_CLOSE_METHOD:
                             {
-                                warn("consumer[%d]: AMQP_CHANNEL_CLOSE_METHOD",taskInfo->index);
+                                warnLn("consumer[%d]: AMQP_CHANNEL_CLOSE_METHOD", taskInfo->index);
                                 //todo 解析关闭原因
                                 amqp_channel_close_t *r = (amqp_channel_close_t *) frame.payload.method.decoded;
-                                warn(r->reply_text.bytes);
+                                warnLn(r->reply_text.bytes);
 
                                 return EXEC_CHANNEL_CLOSED;
                             }
@@ -1304,10 +1410,10 @@ int get_an_message(void *arg){
                             case AMQP_CONNECTION_CLOSE_METHOD:
                             {
                                 //对同一个deliveryTag进行多次ack也会触发
-                                warn("consumer: AMQP_CONNECTION_CLOSE_METHOD");
+                                warnLn("consumer[%d]: AMQP_CONNECTION_CLOSE_METHOD", taskInfo->index);
                                 //todo 需要重新打开连接
                                 amqp_connection_close_t *r = (amqp_connection_close_t *) frame.payload.method.decoded;
-                                warn(r->reply_text.bytes);
+                                warnLn(r->reply_text.bytes);
 
                                 return EXEC_CONN_CLOSED;//2-连接已关闭
                             }
@@ -1318,8 +1424,8 @@ int get_an_message(void *arg){
 //                            AMQP_BASIC_ACK_METHOD
 //                            AMQP_BASIC_RETURN_METHOD
 //                            AMQP_BASIC_DELIVER_METHOD
-                                warn("consumer: received other frame");
-                                return 9;
+                                warnLn("consumer[%d]: received other frame", taskInfo->index);
+                                return EXEC_UNKNOWN_FRAME;
                             }
                         }
                     }
@@ -1347,7 +1453,7 @@ void task_notify_main_run(){
     thread_counts++;
     if(thread_counts==producersInfo.size+consumersInfo.size){
         flag_running=1;
-        warn("signal=cond_running");
+        warnLn("signal=cond_running");
         pthread_cond_signal(&cond_running);
     }
     pthread_mutex_unlock(&global_task_mutex);
@@ -1409,10 +1515,10 @@ void task_notify_main_exit(){
     thread_counts--;
     if(thread_counts==0){
         flag_exit=1;
-        warn("signal=cond_exit");
+        warnLn("signal=cond_exit");
         pthread_cond_broadcast(&cond_exit);//通知主线程
     }
-    warn("thread_counts=%d",thread_counts);
+    warnLn("thread_counts=%d", thread_counts);
     pthread_mutex_unlock(&global_task_mutex);
 }
 void task_wait_main_reset_conn(int conn_index){
@@ -1478,10 +1584,10 @@ void destroy_synchronize_tools(){
 }
 
 void clean_synchronize_resources(void *arg){
-    info("thread exit");
+    infoLn("thread exit");
     pthread_mutex_t *p_lock = (pthread_mutex_t *) arg;
     if( p_lock->__data.__owner==syscall(SYS_gettid)){
-        warn("clean: unlock");
+        warnLn("clean: unlock");
         pthread_mutex_unlock(p_lock);
     }
 }
@@ -1538,23 +1644,23 @@ int main_handle_reset_channels(){
             if(channel->flag_reset == 1){
                 //todo 关闭通道
                 if(rabbitmq_close_channel(i,j)==0){
-                    warn("main: channel close fail");
+                    warnLn("main: channel close fail");
                     return 0;
                 }
 
                 //todo 初始化通道
                 if(rabbitmq_init_channel(i,j)==0){
-                    warn("main: channel reopen fail");
+                    warnLn("main: channel reopen fail");
                     return 0;
                 }
 
                 //todo 初始化角色(生产者和消费者)
                 if(init_role_by_taskInfo(channel->taskInfo)==0){
-                    warn("main: init roles fail");
+                    warnLn("main: init roles fail");
                     return 0;
                 }
 
-                warn("main: conn[%d].channel[%d] reopened",i,j);
+                warnLn("main: conn[%d].channel[%d] reopened", i, j);
 
 //                pthread_mutex_lock(&mutex);
                 //todo 清除重置标志
@@ -1574,21 +1680,21 @@ int main_handle_reset_conns(){
         if (rabbitmqConnsInfo.conns[i].flag_reset == 1){
             //todo 关闭 连接释放资源
             if(rabbitmq_close_conn(i)==0){
-                warn("main: conn close fail");
+                warnLn("main: conn[%d] close fail", i);
                 return 0;
             }
             //todo 初始化 连接
             if(rabbitmq_init_conn(i)==0){
-                warn("main: conn reopen fail");
+                warnLn("main: conn reopen fail");
                 return 0;
             }
             //todo 初始化角色(生产者和消费者)
             if(init_roles_of_conn(i) == 0){
-                warn("main: init roles fail");
+                warnLn("main: init roles fail");
                 return 0;
             }
 
-            warn("main: conn[%d] reopened",i);
+            warnLn("main: conn[%d] reopened", i);
 
 //            pthread_mutex_lock(&mutex);
             //todo 清除重置标志
@@ -1630,21 +1736,21 @@ int rabbitmq_init_client(){
         //todo 交换机
         for (int i = 0; i < exchangesInfo.size; ++i) {
             if(rabbitmq_init_exchange(i)==0){
-                warn("exchange[%d]: init error",i);
+                warnLn("exchange[%d]: init error", i);
                 return 0;
             }
         }
         //todo 队列
         for (int i = 0; i < queuesInfo.size; ++i) {
             if(rabbitmq_init_queue(i)==0){
-                warn("queue[%d]: init error",i);
+                warnLn("queue[%d]: init error", i);
                 return 0;
             }
         }
         //todo 绑定关系
         for (int i = 0; i < bindsInfo.size; ++i) {
             if(rabbitmq_init_bind(i)==0){
-                warn("bind[%d]: init error");
+                warnLn("bind[%d]: init error");
                 return 0;
             }
         }
@@ -1658,7 +1764,7 @@ int rabbitmq_start_client(){
     init_synchronize_tools();
 
     if(rabbitmq_init_client()==0){
-        warn("rabbitmq client: init fail");
+        warnLn("rabbitmq client: init fail");
         return 0;
     }
     else{
@@ -1671,38 +1777,38 @@ int rabbitmq_start_client(){
             rabbitmq_start_consumers()==0
             ||rabbitmq_start_producers()==0
         ){
-            warn("rabbitmq client: start task fail");
+            warnLn("rabbitmq client: start task fail");
             return 0;
         };
 
         //todo main线程任务：负责连接和通道的申请和关闭，控制子线程的运行
         {
-            warn("main: get lock");
+            warnLn("main: get lock");
             pthread_mutex_lock(&global_task_mutex);
-            warn("main: locked");
+            warnLn("main: locked");
 
             work_status=CLIENT_STATUS_READY;
-            warn("main: status=%d",work_status);
+            warnLn("main: status=%d", work_status);
 
             //todo 等待 运行
             while(flag_running!=1){
-                warn("main: wait cond_running,work_status=%d",work_status);
+                warnLn("main: wait cond_running,work_status=%d", work_status);
                 pthread_cond_wait(&cond_running, &global_task_mutex);
             }
             sleep(1);
             work_status=CLIENT_STATUS_RUNNING;
-            warn("main: status=%d",work_status);
+            warnLn("main: status=%d", work_status);
 
             //todo 等待 stop
             while(flag_stop!=1){
-                warn("main: wait cond_stop,work_status=%d",work_status);
+                warnLn("main: wait cond_stop,work_status=%d", work_status);
                 //todo 等待 子线程的通知处理
                 pthread_cond_wait(&cond_deal, &global_task_mutex);
 
                 //todo 检查是否有连接重置处理
                 if(flag_reset_conn == 1){
                     work_status=CLIENT_STATUS_RESETTING_CONN;
-                    warn("main: status=%d",work_status);
+                    warnLn("main: status=%d", work_status);
 
                     //todo 检查和处理连接重置
                     if(main_handle_reset_conns()==0){
@@ -1713,7 +1819,7 @@ int rabbitmq_start_client(){
                 //todo 检查是否有通道重置处理
                 if(flag_reset_channel == 1){
                     work_status=CLIENT_STATUS_RESETTING_CHANNEL;
-                    warn("main: status=%d",work_status);
+                    warnLn("main: status=%d", work_status);
 
                     //todo 检查和处理通道重置
                     if(main_handle_reset_channels()==0){
@@ -1723,22 +1829,25 @@ int rabbitmq_start_client(){
 
                 }
                 work_status=CLIENT_STATUS_RUNNING;
-                warn("main: status=%d",work_status);
+                warnLn("main: status=%d", work_status);
             }
 exit:
             work_status=CLIENT_STATUS_STOPPING_TASKS;
-            warn("main: status=%d",work_status);
+            warnLn("main: status=%d", work_status);
 
-            warn("main: close all threads,work_status=%d",work_status);
+            warnLn("main: close all threads,work_status=%d", work_status);
 
             //todo 等待 所有子线程结束任务 exit
             while(flag_exit!=1){
-                warn("main: wait cond_exit,work_status=%d",work_status);
+
+                //todo 唤醒所有阻塞中的线程
+
+                warnLn("main: wait cond_exit,work_status=%d", work_status);
                 pthread_cond_wait(&cond_exit,&global_task_mutex);
 
             }
             work_status=CLIENT_STATUS_EXIT;
-            warn("main: status=%d",work_status);
+            warnLn("main: status=%d", work_status);
 
 //        //todo 等待 terminated
 //        while(work_status==3){
@@ -1746,9 +1855,9 @@ exit:
 //            pthread_cond_wait(&cond_terminated,&mutex);
 //        }
 
-            warn("main: release lock,work_status=%d",work_status);
+            warnLn("main: release lock,work_status=%d", work_status);
             pthread_mutex_unlock(&global_task_mutex);
-            warn("main: unlocked,work_status=%d",work_status);
+            warnLn("main: unlocked,work_status=%d", work_status);
 
 
             //todo 打印退出信息
