@@ -1,0 +1,295 @@
+50min
+分值：100 = 20*1 + 20*2 + 10*4
+           简单    中等    困难
+////////////////
+困难（代码分析题）
+10*4
+////////////////
+1.现有以下代码：
+    function Foo() {
+        getName = function () {
+            log(1);
+        };
+        return this;
+    }
+    Foo.getName = function () {
+        alert(2);
+    };
+    Foo.prototype.getName = function () {
+        alert(3);
+    };
+    var getName = function () {
+        alert(4);
+    };
+    function getName() {
+        alert(5);
+    }
+    Foo.getName();//2
+    getName();//5
+    Foo().getName();//3
+    getName();//5
+    new Foo.getName();//3
+    new Foo().getName();//3
+    new new Foo().getName();//3
+请选择正确的显示顺序：（D）
+A.1 4 3 1 3 1 1
+B.3 5 1 5 2 3 3
+C.2 5 3 5 3 1 1
+D.2 4 1 1 2 3 3
+
+
+
+
+
+///////////////////////
+中等（框架细节，计网，简单算法题,js语法细节，有点计算量和挖坑）
+20*2
+//////////////////////
+
+1.以下主机地址中与192.168.2.131/26在同一个网段的是(B)。
+A.192.168.2.119/26
+B.192.168.2.129/26
+C.192.168.2.193/26
+D.192.168.2.60/26
+
+2.以下代码:
+  <div id="box1">
+      <div id="box2">
+          content
+      </div>
+  </div>
+  <script>
+      const $ = document.querySelector.bind(document);
+      const box1 = $('#box1');
+      const box2 = $('#box2');
+
+      box1.addEventListener('click', () => {
+      console.log('box1 true');
+      }, true);
+
+      box1.addEventListener('click', () => {
+      console.log('box1 false');
+      }, false);
+
+      box2.addEventListener('click', () => {
+      console.log('box2 true');
+      }, true);
+
+      box2.addEventListener('click', () => {
+      console.log('box2 false');
+      }, false);
+  </script>
+执行后输出结果为（A）？
+A.box1 true, box2 true, box2 false, box1 false
+B.box1 true, box2 false, box1 false, box2 true
+C.box2 false, box2 true, box1 false, box1 true
+D.box1 true, box1 false, box2 true, box2 false
+
+3.如下代码:
+  function showCase(value) {
+      switch(value) {
+      case 'A':
+          console.log('Case A');
+          break;
+      case 'B':
+          console.log('Case B');
+          break;
+      case undefined:
+          console.log('Case undefined');
+          break;
+      default:
+          console.log('Case default');
+      }
+  }
+  showCase(new String('A'));
+输出正确的是(D)？
+A.Case A
+B.Case B
+C.Case undefined
+D.Case default
+
+4.下列代码结果为 true 的是？(A)
+A.Symbol.for('a') === Symbol.for('a')
+B.Symbol('a') === Symbol('a')
+C.NaN === NaN
+D.{} === {}
+
+5."113"+25-"50" 的运算结果是：(B)
+  A.88
+  B.11275
+  C.undefined
+  D.1132550
+
+6.以下哪项描述是正确的：(D)
+A.cookie分永久cookie和会话级别cookie，两种cookie都可以实现跨浏览器的传输；
+B.storage分localStorage和sessionStorage，localStorage没有跨域的限制，但是sessionStorage有；
+C.sessionStorage和localStorage的API完全一致，但是存储空间有区别，sessionStorage存储空间小于localStorage；
+D.cookies和storage都存在跨域限制；
+
+7.已知一棵二叉树，如果先序遍历的节点顺序是：ADCEFGHB，中序遍历是：CDFEGHAB，则后序遍历结果为(D)
+A.CFHGEBDA
+B.CDFEGHBA
+C.FGHCDEBA
+D.CFHGEDBA
+
+8.现有以下代码：
+    var p1 = new Promise(function(resolve, reject){
+        resolve("2")
+    })
+    setTimeout(function(){
+        console.log("1")
+    },10)
+    p1.then(function(value){
+        console.log(value)
+    })
+    setTimeout(function(){
+        console.log("3")
+    },0)
+上例代码执行的输出顺序是？(D)
+A.123
+B.321
+C.213
+D.231
+
+9.下面W3C标准盒模型设置的内容宽度为（A）
+    div {
+        width: 100px;
+        height: 200px;
+        border: 10px;
+        padding: 20px;
+        margin: 30px;
+    }
+A.100px
+B.160px
+C.200px
+D.260px
+
+10.下列对 Reflow（回流）和 Repaint（重绘）的描述正确的是？(C)
+A.repaint 比 reflow 更加花费时间影响性能
+B.一条条地修改 DOM 的样式要比先定义好 css 的 class 然后修改 DOM 的 className 减少 reflow/repaint
+C.为 HTML 标签使用 fixed 或 absolute 的 position，那么修改他们的 CSS 是不会 reflow 的
+D.改变了某个元素的背景颜色，文字颜色等会导致 reflow
+
+11.在 Vue 组件的生命周期中，当需要在服务器端渲染 (SSR) 场景下执行数据预取逻辑时，应选择哪个钩子函数？(D)
+A.`mounted`
+B.`beforeCreate`
+C.`beforeMount`
+D.`created`
+
+12.在Vue3中，使用Proxy替代Object.defineProperty实现响应式系统的主要目的是什么？(A)
+A.支持动态添加的属性、数组索引变化等更全面的对象变化监听
+B.提高对象的初始化性能
+C.减少响应式系统的代码体积
+D.提供更好的浏览器兼容性
+
+13.在Vue中，下列哪个选项对数组的操作不会触发视图的更新（C）
+A.push()
+B.shift()
+C.concat()
+D.reverse()
+
+///////////////////////
+简单(基本js语法，常见CSS，计算机相关基础，Vue框架基础题)
+20*1
+//////////////////////
+
+1.HTML的script标签，按规范defer和async属性说法正确的是？(C)
+    A.async属性的脚本加载和执行不会阻塞页面的渲染
+    B.defer属性无法保证多脚本的执行顺序
+    C.async属性的脚本会在加载完毕后立即执行
+    D.defer属性脚本会在DOMContentLoaded事件触发后立即执行
+
+
+2.以下表达式，正确的是(D)
+    A.Number('a') == Number('a')
+    B.-1 == true
+    C.3 + '2' === 5
+    D.![] == ''
+
+
+3.有以下ES6代码
+    function * gen() {
+        yield 1;
+        yield 2;
+        yield 3;
+    }
+以下说法正确的是：(C)
+A.gen()执行后返回2
+B.gen()执行后返回undefined
+C.gen()执行后返回一个Generator对象
+D.gen()执行后返回1
+
+
+
+4.标准模式下，设置块元素的width=100px，这100px在盒模型中组成部分是（A）
+A.content
+B.padding(left、right)+content
+C.padding(left、right)+content+border(left、right)
+D.padding(left、right)+content+border(left、right)+margin(left、right)
+
+
+
+5.var reg = /^[^ab][cd]e$/; 那么，以下为true的是(B)
+A.reg.test('abcde')
+B.reg.test('cde')
+C.reg.test('ace')
+D.reg.test('de')
+
+
+
+6.下列TCP连接建立过程描述正确的是?(C)
+A.服务端收到客户端的SYN包后等待2*ml时间后就会进入SYN_SENT状态
+B.服务端收到客户端的ACK包后会进入SYN_RCVD状态
+C.当客户端处于ESTABLISHED状态时，服务端可能仍处于SYN_RCVD状态
+D.服务端未收到客户端确认包，等待2*ml时间后会直接关闭连接
+
+
+7.下列描述错误的是(D)
+A.进程拥有自己独立的堆和栈，既不共享堆，也不共享栈
+B.线程是CPU独立运行和独立调度的基本单位
+C.协程是一种用户态的轻量级线程
+D.进程，线程，协程的调度都由操作系统完成
+
+
+8.弹性盒子中flex-shrink:0的功能是（D）？
+A.当兄弟元素的宽加起来超过父元素时，此元素缩小宽
+B.当兄弟元素的宽加起来超过父元素时，此元素宽和高等比例缩小
+C.当兄弟元素的宽加起来超过父元素时，此元素缩小高
+D.当兄弟元素的宽加起来超过父元素时，此元素不缩小宽
+
+9.下列哪项不是websocket的特性(B)
+A.和http协议不同
+B.客户端采用长轮询的方式向服务端发起请求
+C.仍然需要至少一次客户端服务端握手
+D.websocket客户端基于事件的编程模型与node类似
+
+10.下列关于客户端渲染和服务器端渲染的描述错误的是（D）
+A.服务器端渲染有利于SEO，且首页加载快
+B.客户端渲染节省后端资源，但可能会加载慢出现白屏
+C.服务器端渲染耗费流量，局部页面的变化也需要重新请求完整的页面
+D.客户端和服务器端在首屏渲染上网络请求次数是一样的
+
+11.渲染动态用户评论列表时，下列关于key的使用，最能保证性能和避免组件状态混乱的是？(B)
+A.使用列表项的index作为key，因为实现简单且唯一
+B.使用列表项的user_id（唯一标识）作为key，确保diff算法准确识别项
+C.当列表项无唯一ID时，使用项内容的哈希值作为key
+D.省略key以让Vue自动优化，减少代码复杂度
+
+12.关于 position 定位，下列说法错误的是(A)
+A.relative 元素以它原来的位置为基准偏移，在其移动后，原来的位置不再占据空间
+B.fixed 元素，可定位于相对于浏览器窗口的指定坐标
+C.absolute 的元素，如果它的父容器设置了position 属性，并且 position 的属性值为 absolute 或者 relative，那么就会依据父容器进行偏移
+D.fixed 属性的元素在标准流中不占位置
+
+
+13.Vue 中通过给元素添加哪个属性绑定DOM元素（A）
+A.ref
+B.refs
+C.$ref
+D.$refs
+
+14.现有一个待排序的数组a={6, 5, 4, 3, 2, 1, 8, 8}，完成最终归并排序（升序）的前一步的结果为（B）。
+   A.2, 1, 8, 8, 6, 5, 4, 3
+   B.3, 4, 5, 6, 1, 2, 8, 8
+   C.1, 2, 3, 4, 5, 6, 8, 8
+   D.6, 5, 4, 3, 2, 1, 8, 8
