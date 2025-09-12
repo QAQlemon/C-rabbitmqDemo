@@ -188,6 +188,29 @@ B.shift()
 C.concat()
 D.reverse()
 
+14.下面哪个选项可以产生0<=num<=10的随机整数(C)
+A.Math.floor(Math.random()*6)
+B.Math.floor(Math.random()*10)
+C.Math.floor(Math.random()*11)
+D.Math.ceil(Math.random()*10)
+
+15.请阅读以下代码
+    var obj = {};
+    obj.log = console.log;
+    obj.log.call(console,this);
+该代码在浏览器中执行，输出的日志结果是什么？(B)
+A.undefined
+B.window
+C.console
+D.obj
+
+16.现有一个待排序的数组a={6, 5, 4, 3, 2, 1, 8, 8}，完成最终归并排序（升序）的前一步的结果为（B）。
+A.2, 1, 8, 8, 6, 5, 4, 3
+B.3, 4, 5, 6, 1, 2, 8, 8
+C.1, 2, 3, 4, 5, 6, 8, 8
+D.6, 5, 4, 3, 2, 1, 8, 8
+
+
 ///////////////////////
 简单(基本js语法，常见CSS，计算机相关基础，Vue框架基础题)
 20*1
@@ -288,8 +311,59 @@ B.refs
 C.$ref
 D.$refs
 
-14.现有一个待排序的数组a={6, 5, 4, 3, 2, 1, 8, 8}，完成最终归并排序（升序）的前一步的结果为（B）。
-   A.2, 1, 8, 8, 6, 5, 4, 3
-   B.3, 4, 5, 6, 1, 2, 8, 8
-   C.1, 2, 3, 4, 5, 6, 8, 8
-   D.6, 5, 4, 3, 2, 1, 8, 8
+14.如何使用 CSS 选择器定义某个父元素中所有第「奇数」个子元素的样式：
+   A.nth-child(odd)
+   B.nth-child(even)
+   C.nth-of-type(odd)
+   D.nth-of-child(even)
+
+
+15.下面的代码片段使用 Flexbox 实现了什么布局效果（B）
+    <style>
+    .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    </style>
+    <div class="container">
+        <div class="item">Item 1</div>
+        <div class="item">Item 2</div>
+        <div class="item">Item 3</div>
+    </div>
+A.将容器内的项目按行排列，并在水平方向居中对齐
+B.将容器内的项目按列排列，并在水平方向居中对齐
+C.将容器内的项目按行排列，并在垂直方向居中对齐
+D.将容器内的项目按列排列，并在垂直方向居中对齐
+
+16.列选项中，块级元素是？(B)
+   A.span
+   B.li
+   C.canvas
+   D.input
+
+17.那个操作不会造成内存泄露(D)
+   A.没有清理的DOM元素引用
+   B.被遗忘的定时器
+   C.事件侦听没有移除
+   D.局部变量不用时，没有设为null
+
+18.列关于 CSS 属性 position 的属性值的描述，说法错误的是？(B)
+   A.static：没有定位，元素出现在正常的流中
+   B.fixed：生成绝对定位的元素，相对于父元素进行定位
+   C.relative：生成相对定位的元素，相对于元素本身正常位置进行定位。
+   D.absolute：生成绝对定位的元素，相对于 static 定位以外的第一个祖先元素进行定位。
+
+
+19.以下关于let和const的说法中错误的是:(D)
+A.let声明的变量值和类型都可以改变
+B.const声明的常量不可以改变
+C.两者都不存在变量提升，同时存在暂时性死区，只能在声明的位置后面使用
+D.const可以先声明再初始化，可以后赋值
+
+
+20.下面哪个属性不会让 div 脱离文档流（normal flow）？(C)
+A.position: absolute;
+B.position: fixed;
+C.position: relative;
+D.float: left;
