@@ -100,13 +100,13 @@ typedef struct taskInfoStruct{
 //连接和通道信息
 #define CHANNEL_MAX_SIZE 3
 typedef struct{
+    int flag_reset;//重置标记位 0-无重置 1-需要重置
+
     //通道号（1-65535） 通道号可以不设置，默认为index+1
     //不建议手动设置，如果手动设置，需要保证通道不被重复
     //当打开通道失败时自动修改通道值，最多再尝试5次
     int num;
-
     int status;//标志位: 0-关闭 1-可用 2-已被线程使用
-    int flag_reset;//重置标记位 0-无重置 1-需要重置
     taskInfo_t *taskInfo;
 }channelEntity_t;
 typedef struct{
@@ -118,8 +118,9 @@ typedef struct{
 
 #define CONNECTION_MAX_SIZE 2
 typedef struct{
-    int status;//0-未打开 1-已创建连接结构体 2-已经创建套接字 3-已建立TCP连接 4-已登录 5-已打开通道(可用连接)
     int flag_reset;//连接重置标识 0-无重置 1-需要重置
+
+    int status;//0-未打开 1-已创建连接结构体 2-已经创建套接字 3-已建立TCP连接 4-已登录 5-已打开通道(可用连接)
     int task_nums;//统计数 当前活动任务数
     amqp_connection_state_t connState;//指针 amqp_new_connection()返回
     amqp_socket_t *socket;//amqp_tcp_socket_new()返回
@@ -278,7 +279,7 @@ extern pthread_cond_t cond_exit;//主->子
 
 //todo 全局重置标识
 extern volatile int flag_reset_conn;//
-extern volatile int flag_reset_channel;//-1
+extern volatile int flag_reset_channel;//
 
 //todo synchronized
 //任务 通知main所有任务以就绪
@@ -367,9 +368,12 @@ void *rabbitmq_task(void *arg);
 int get_an_message(void *arg);//下拉 定时数据
 void *rabbitmq_consumer_deal(void *arg);
 
+//通知上传情况
+void notify_message_publish_result(taskInfo_t *taskInfo,int success);
 int publish_an_message(void *arg);
 int wait_ack(taskInfo_t *taskInfo);
 void *rabbitmq_producer_deal(void *arg);
+
 
 //业务函数 非阻塞 后续扩展阻塞支持
 int consumer_task_handle_cron_message(void *arg);//解析转发 定时消息数据

@@ -23,8 +23,12 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d37117ee-6323-43db-931c-5f8935bd59a7" name="更改" comment="生产端状态机处理待完善，目前存在问题，生产端若一直等待数据将无法在连接断开的情况下触发连接重置处理">
+    <list default="true" id="d37117ee-6323-43db-931c-5f8935bd59a7" name="更改" comment="基本完成rabbitmq客户端程序">
+      <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/source/main.c" beforeDir="false" afterPath="$PROJECT_DIR$/source/main.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/source/rabbitmq-c.c" beforeDir="false" afterPath="$PROJECT_DIR$/source/rabbitmq-c.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/source/rabbitmq-c.h" beforeDir="false" afterPath="$PROJECT_DIR$/source/rabbitmq-c.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -66,6 +70,7 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "CMake 应用程序.target.executor": "Debug",
+    "Docker.Docker 镜像.executor": "Run",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
@@ -86,7 +91,7 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "CPPToolchains",
+    "settings.editor.selected.configurable": "web.server",
     "structure.view.defaults.are.configured": "true",
     "vue.rearranger.settings.migration": "true"
   }
@@ -103,6 +108,11 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake 应用程序.target">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="target" type="CMakeRunConfiguration" factoryName="Application" singleton="false" PROGRAM_PARAMS="-std=c11 -D_POSIX_CSOURCE=200809L" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="true" EMULATE_TERMINAL="true" PASS_PARENT_ENVS_2="true" PROJECT_NAME="demo" TARGET_NAME="target" CONFIG_NAME="Debug-GCC-ubuntu20.04" RUN_TARGET_PROJECT_NAME="demo" RUN_TARGET_NAME="target">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -115,12 +125,50 @@
         <option name="com.jetbrains.cidr.cpp.runfile.CppFileBuildBeforeRunTaskProvider$BasicBuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
+    <configuration name="Docker 镜像" type="docker-deploy" factoryName="docker-image" temporary="true" server-name="Docker">
+      <deployment type="docker-image">
+        <settings>
+          <option name="imageTag" value="rabbitmq:4.1.4-management" />
+          <option name="containerName" value="" />
+          <option name="envVars">
+            <list>
+              <DockerEnvVarImpl>
+                <option name="name" value="RABBITMQ_DEFAULT_USER" />
+                <option name="value" value="root" />
+              </DockerEnvVarImpl>
+              <DockerEnvVarImpl>
+                <option name="name" value="RABBITMQ_DEFAULT_PASS" />
+                <option name="value" value="123123" />
+              </DockerEnvVarImpl>
+            </list>
+          </option>
+          <option name="portBindings">
+            <list>
+              <DockerPortBindingImpl>
+                <option name="containerPort" value="15672" />
+                <option name="hostIp" value="0.0.0.0" />
+                <option name="hostPort" value="15672" />
+              </DockerPortBindingImpl>
+            </list>
+          </option>
+        </settings>
+      </deployment>
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="docker-deploy" factoryName="docker-image" temporary="true">
+      <deployment type="docker-image">
+        <settings />
+      </deployment>
+      <method v="2" />
+    </configuration>
     <list>
-      <item itemvalue="CMake 应用程序.target" />
       <item itemvalue="C/C++ 文件.demo.c" />
+      <item itemvalue="CMake 应用程序.target" />
+      <item itemvalue="Docker.Docker 镜像" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Docker.Docker 镜像" />
         <item itemvalue="C/C++ 文件.demo.c" />
       </list>
     </recent_temporary>
@@ -178,6 +226,8 @@
       <workItem from="1757407744128" duration="2557000" />
       <workItem from="1757468290038" duration="24806000" />
       <workItem from="1757583048651" duration="37000" />
+      <workItem from="1758173769851" duration="160000" />
+      <workItem from="1758174036190" duration="4395000" />
     </task>
     <task id="LOCAL-00001" summary="start">
       <option name="closed" value="true" />

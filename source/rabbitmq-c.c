@@ -27,7 +27,7 @@ volatile int flag_reset_conn;//
 volatile int flag_reset_channel;//-1
 
 RabbitmqConfig_t rabbitmqConfigInfo={
-    .hostname="192.168.200.132",
+    .hostname="192.168.200.135",
     .port=5672,
     .user="root",
     .passwd="123123"
@@ -199,7 +199,7 @@ RabbitmqBinds_t bindsInfo= {
     }
 };
 consumers_t consumersInfo={
-    .size=1,//注：需要保证至少一个任务，否则client启动失败
+    .size=0,//注：需要保证至少一个任务，否则client启动失败
     .consumers={
         //todo 消费者
         {
@@ -221,7 +221,7 @@ consumers_t consumersInfo={
     }
 };
 producers_t producersInfo={
-    .size=2,//注：需要保证至少一个任务，否则client启动失败
+    .size=1,//注：需要保证至少一个任务，否则client启动失败
     .producers={
         //todo 生产者 采集设备数据
         {
@@ -1134,16 +1134,7 @@ int rabbitmq_init_producer(int producer_index){
     }
 
     //todo 任务信息
-    if(
-        producersInfo.producers[producer_index].taskInfo.execInfo.data!=NULL
-        &&strlen(producersInfo.producers[producer_index].taskInfo.execInfo.data)!=0
-    ){
-        //todo 处理断连前已准备好的数据
-        producersInfo.producers[producer_index].taskInfo.status=PRODUCER_TASK_PUBLISH;//2-发布中
-    }
-    else{
-        producersInfo.producers[producer_index].taskInfo.status=PRODUCER_TASK_WAIT_DATA;//1-等待中
-    }
+    producersInfo.producers[producer_index].taskInfo.status=PRODUCER_TASK_WAIT_DATA;//1-等待中
     producersInfo.producers[producer_index].taskInfo.type=0;//0-生产者
     producersInfo.producers[producer_index].taskInfo.index=producer_index;
     producersInfo.producers[producer_index].taskInfo.execInfo.code=0;
@@ -1282,7 +1273,7 @@ int rabbitmq_start_producer(int index){
     )==0?1:0;
 }
 int rabbitmq_start_producers(){
-    if(producersInfo.size<=0 || producersInfo.size>PRODUCER_MAX_SIZE){
+    if(producersInfo.size<0 || producersInfo.size>PRODUCER_MAX_SIZE){
         warnLn("producers start: size=%d,max=%d", producersInfo.size, PRODUCER_MAX_SIZE);
         return 0;
     }
@@ -1322,7 +1313,7 @@ int rabbitmq_start_consumer(int index){
     )==0?1:0;
 }
 int rabbitmq_start_consumers(){
-    if(consumersInfo.size<=0 || consumersInfo.size>CONSUMER_MAX_SIZE){
+    if(consumersInfo.size<0 || consumersInfo.size>CONSUMER_MAX_SIZE){
         warnLn("consumers start: size=%d,max=%d", consumersInfo.size, CONSUMER_MAX_SIZE);
         return 0;
     }
@@ -1489,9 +1480,6 @@ void task_notify_main_reset_conn(int conn_index){
 
         pthread_mutex_unlock(&global_task_mutex);
     }
-
-//    //todo 等待处理完成
-//    task_wait_main_reset_conn(conn_index);
 }
 void task_notify_main_reset_channel(int conn_index, int channel_index){
     {
@@ -1505,9 +1493,6 @@ void task_notify_main_reset_channel(int conn_index, int channel_index){
 
         pthread_mutex_unlock(&global_task_mutex);
     }
-
-//    //todo 等待处理完成
-//    task_wait_main_reset_channel(conn_index,channel_index);
 }
 void task_notify_main_exit(){
     //todo 通知任务已退出
@@ -1727,6 +1712,15 @@ int consumer_message_handle(const amqp_envelope_t *envelope){
 
 //todo 客户端启动函数
 int rabbitmq_init_client(){
+    work_status=0;
+
+    //todo 全局变量
+    flag_running=0;
+    flag_stop=0;
+    flag_exit=0;
+    flag_reset_conn=0;
+    flag_reset_channel=0;
+
     //todo 初始化连接和通道(失败能自动释放连接资源)
     if(rabbitmq_init_conns()==0){
         return 0;
@@ -1772,17 +1766,23 @@ int rabbitmq_start_client(){
 //        setbuf(stdout, NULL);
 //        setvbuf()
 
-        //todo 启动任务
-        if(
-            rabbitmq_start_consumers()==0
-            ||rabbitmq_start_producers()==0
-        ){
-            warnLn("rabbitmq client: start task fail");
-            return 0;
-        };
-
         //todo main线程任务：负责连接和通道的申请和关闭，控制子线程的运行
+        if(producersInfo.size+consumersInfo.size==0)
         {
+            warnLn("main: no ask");
+        }
+        else{
+
+            //todo 启动任务
+            if(
+                rabbitmq_start_consumers()==0
+                ||rabbitmq_start_producers()==0
+            ){
+                warnLn("rabbitmq client: start task fail");
+                return 0;
+            };
+
+            //todo main处理
             warnLn("main: get lock");
             pthread_mutex_lock(&global_task_mutex);
             warnLn("main: locked");
@@ -1839,9 +1839,7 @@ exit:
 
             //todo 等待 所有子线程结束任务 exit
             while(flag_exit!=1){
-
                 //todo 唤醒所有阻塞中的线程
-
                 warnLn("main: wait cond_exit,work_status=%d", work_status);
                 pthread_cond_wait(&cond_exit,&global_task_mutex);
 
@@ -1849,15 +1847,13 @@ exit:
             work_status=CLIENT_STATUS_EXIT;
             warnLn("main: status=%d", work_status);
 
-//        //todo 等待 terminated
-//        while(work_status==3){
-//            warn("main: wait cond_terminated,work_status=%d",work_status);
-//            pthread_cond_wait(&cond_terminated,&mutex);
-//        }
 
             warnLn("main: release lock,work_status=%d", work_status);
             pthread_mutex_unlock(&global_task_mutex);
             warnLn("main: unlocked,work_status=%d", work_status);
+
+
+            //todo 重置部分数据
 
 
             //todo 打印退出信息

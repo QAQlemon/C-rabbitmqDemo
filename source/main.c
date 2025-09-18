@@ -72,16 +72,16 @@ void *test01(void * args){
 int main(){
 
 //todo rabbitmq客户端程序
-//    {
-//        while(1){
-//            if(rabbitmq_start_client()==0){
-//                break;
-//            }
-//        }
-//    }
     {
-        rabbitmq_start_client();
+        while(1){
+            if(rabbitmq_start_client()==0){
+                break;
+            }
+        }
     }
+//    {
+//        rabbitmq_start_client();
+//    }
 
 
 //todo 验证：线程退出时注册的资源释放函数
@@ -431,6 +431,10 @@ void *rabbitmq_consumer_deal(void *arg){
                     free(taskInfo->execInfo.data);
                     taskInfo->execInfo.data=NULL;
                 }
+//                //todo 清除运行状态数据,便于下次启动
+//                rabbitmqConnsInfo.conns[conn_index].flag_reset=0;
+//                rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[channel_index].flag_reset=0;
+
                 //todo 退出信息设置
                 if(taskInfo->execInfo.info == NULL){
                     taskInfo->execInfo.info=get_code_info(taskInfo->execInfo.code);
@@ -451,6 +455,25 @@ void *rabbitmq_consumer_deal(void *arg){
     return arg;
 }
 
+void notify_message_publish_result(taskInfo_t *taskInfo,int success){
+    char *msg=NULL;
+    if(taskInfo->status==PRODUCER_TASK_PUBLISH){
+        msg="publish";
+    }
+    else if(taskInfo->status==PRODUCER_TASK_CONFIRM){
+        msg="confirm";
+    }
+    warnLn("-------------------------------------------");
+    warnLn("producer[%d]:%s",taskInfo->index,msg,success?"success":"fail");
+
+    //todo 通知控制板数据发布情况
+//    if(success){
+//
+//    }
+//    else{
+//
+//    }
+}
 
 int publish_an_message(void *arg){
     //todo 任务信息
@@ -489,49 +512,50 @@ int publish_an_message(void *arg){
         return EXEC_CORRECT;
     }
     else{
-        amqp_frame_t frame={};
-        amqp_rpc_reply_t reply = amqp_get_rpc_reply(connState);
-        if(reply.library_error==AMQP_STATUS_UNEXPECTED_STATE){
-            if (AMQP_STATUS_OK != amqp_simple_wait_frame(connState, &frame)) {
-                return EXEC_CONSUMER_MESSAGE_GET_FAIL;
-            }
-            //1.METHOD帧 方法帧
-            if (AMQP_FRAME_METHOD == frame.frame_type) {
-                switch (frame.payload.method.id) {
-                    //todo 需要处理的帧(连接、通道的关闭)
-                    case AMQP_CHANNEL_CLOSE_METHOD:
-                    {
-                        warnLn("producer[%d]: AMQP_CHANNEL_CLOSE_METHOD", taskInfo->index);
-                        //todo 解析关闭原因
-                        amqp_channel_close_t *r = (amqp_channel_close_t *) frame.payload.method.decoded;
-                        warnLn(r->reply_text.bytes);
-
-                        return EXEC_CHANNEL_CLOSED;
-                    }
-                    //connect已关闭
-                    case AMQP_CONNECTION_CLOSE_METHOD:
-                    {
-                        //对同一个deliveryTag进行多次ack也会触发
-                        warnLn("producer[%d]: AMQP_CONNECTION_CLOSE_METHOD", taskInfo->index);
-                        //todo 需要重新打开连接
-                        amqp_connection_close_t *r = (amqp_connection_close_t *) frame.payload.method.decoded;
-                        warnLn(r->reply_text.bytes);
-
-                        return EXEC_CONN_CLOSED;//2-连接已关闭
-                    }
-                        //其它非预期帧(除AMQP_BASIC_DELIVER_METHOD和连接相关以外的帧)
-                    default:
-                    {
-                        //todo 非预期帧(以下帧无需消费端特别处理)
-//                            AMQP_BASIC_ACK_METHOD
-//                            AMQP_BASIC_RETURN_METHOD
-//                            AMQP_BASIC_DELIVER_METHOD
-                        warnLn("producer[%d]: received other frame", taskInfo->index);
-                        return EXEC_UNKNOWN_FRAME;
-                    }
-                }
-            }
-        }
+        return EXEC_CONN_CLOSED;
+//        amqp_frame_t frame={};
+//        amqp_rpc_reply_t reply = amqp_get_rpc_reply(connState);
+//        if(reply.library_error==AMQP_STATUS_UNEXPECTED_STATE){
+//            if (AMQP_STATUS_OK != amqp_simple_wait_frame(connState, &frame)) {
+//                return EXEC_CONSUMER_MESSAGE_GET_FAIL;
+//            }
+//            //1.METHOD帧 方法帧
+//            if (AMQP_FRAME_METHOD == frame.frame_type) {
+//                switch (frame.payload.method.id) {
+//                    //todo 需要处理的帧(连接、通道的关闭)
+//                    case AMQP_CHANNEL_CLOSE_METHOD:
+//                    {
+//                        warnLn("producer[%d]: AMQP_CHANNEL_CLOSE_METHOD", taskInfo->index);
+//                        //todo 解析关闭原因
+//                        amqp_channel_close_t *r = (amqp_channel_close_t *) frame.payload.method.decoded;
+//                        warnLn(r->reply_text.bytes);
+//
+//                        return EXEC_CHANNEL_CLOSED;
+//                    }
+//                    //connect已关闭
+//                    case AMQP_CONNECTION_CLOSE_METHOD:
+//                    {
+//                        //对同一个deliveryTag进行多次ack也会触发
+//                        warnLn("producer[%d]: AMQP_CONNECTION_CLOSE_METHOD", taskInfo->index);
+//                        //todo 需要重新打开连接
+//                        amqp_connection_close_t *r = (amqp_connection_close_t *) frame.payload.method.decoded;
+//                        warnLn(r->reply_text.bytes);
+//
+//                        return EXEC_CONN_CLOSED;//2-连接已关闭
+//                    }
+//                        //其它非预期帧(除AMQP_BASIC_DELIVER_METHOD和连接相关以外的帧)
+//                    default:
+//                    {
+//                        //todo 非预期帧(以下帧无需消费端特别处理)
+////                            AMQP_BASIC_ACK_METHOD
+////                            AMQP_BASIC_RETURN_METHOD
+////                            AMQP_BASIC_DELIVER_METHOD
+//                        warnLn("producer[%d]: received other frame", taskInfo->index);
+//                        return EXEC_UNKNOWN_FRAME;
+//                    }
+//                }
+//            }
+//        }
     }
 
 }
@@ -577,6 +601,7 @@ void *rabbitmq_producer_deal(void *arg){
         switch (taskInfo->status) {
             //0-闲置（用于等待main重置连接或通道）
             case PRODUCER_TASK_IDLE:{
+                sleep(1);
                 break;
             }
 
@@ -584,6 +609,18 @@ void *rabbitmq_producer_deal(void *arg){
             case PRODUCER_TASK_WAIT_DATA:{
                 int res=0;
 //              taskInfo->execInfo.code=0;
+                //todo 防止连接断开时一直在等待数据，导致无法完成连接重置
+                if(rabbitmqConnsInfo.conns[conn_index].flag_reset==1){
+                    taskInfo->execInfo.code = EXEC_CONN_CLOSED;//2-连接已关闭
+                    taskInfo->status=PRODUCER_TASK_HANDLE_EXCEPTION;//4-异常处理
+                    break;
+                }
+                //todo 通道暂无检测方式，只能一直等待数据
+//                else if(rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[conn_index].flag_reset==1){
+//                    taskInfo->execInfo.code = EXEC_CHANNEL_CLOSED;//3-通道已关闭
+//                    taskInfo->status=PRODUCER_TASK_HANDLE_EXCEPTION;//4-异常处理
+//                    break;
+//                }
 
                 //todo 分配和重置空间
                 if(taskInfo->execInfo.data==NULL){
@@ -595,7 +632,6 @@ void *rabbitmq_producer_deal(void *arg){
                 //todo 注册的发布端函数-准备消息
                 res = taskInfo->task(taskInfo);
                 taskInfo->execInfo.code = res;
-
 
                 //0-正常处理(保持状态,本次执行无消息数据)
                 if(res==EXEC_NORMAL){
@@ -618,10 +654,9 @@ void *rabbitmq_producer_deal(void *arg){
                 connectionEntity *connInfo = &(rabbitmqConnsInfo.conns[producerInfo->conn_index]);
                 //todo 发布一条消息
                 int res=publish_an_message(taskInfo);
+                taskInfo->execInfo.code=res;
+
                 if(res==EXEC_CORRECT){
-                    infoLn("=======================================");
-                    infoLn("producer[%d] send: len=%d", taskInfo->index, strlen(taskInfo->execInfo.data));
-                    infoLn(">%s",taskInfo->execInfo.data);
                     //todo 检查发布确认是否开启
                     if(producerInfo->confirmMode == 1) {
                         //已发送且需要等待确认
@@ -629,14 +664,16 @@ void *rabbitmq_producer_deal(void *arg){
                         break;
                     }
                     else{
+                        notify_message_publish_result(taskInfo,1);
                         //已发送无需等待确认
                         taskInfo->status=PRODUCER_TASK_WAIT_DATA;//1-等待中
                         break;
                     }
                 }
                 else{
+                    notify_message_publish_result(taskInfo,0);
+
                     taskInfo->status=PRODUCER_TASK_HANDLE_EXCEPTION;//4-异常处理中
-//                    taskInfo->execInfo.code=EXEC_PRODUCER_PUBLISH_FAIL;//5-数据发布失败
                     break;
                 }
             }
@@ -652,10 +689,12 @@ void *rabbitmq_producer_deal(void *arg){
                 }
                 //1-结果正常
                 else if(res==EXEC_CORRECT){
+                    notify_message_publish_result(taskInfo,1);
                     taskInfo->status=PRODUCER_TASK_WAIT_DATA;//1-等待中
                     break;
                 }
                 else{
+                    notify_message_publish_result(taskInfo,0);
                     taskInfo->status=PRODUCER_TASK_HANDLE_EXCEPTION;//4-异常处理
                     break;
                 }
@@ -763,24 +802,24 @@ int producer_task_prepare_device_message(void *arg) {
 
     //todo 填充数据
     //正常返回数据
-//    {
-////        taskInfo->execInfo.data;
-//////    info("producer[%d]>")
-////        info(stdout, "producer[%d]>",taskInfo->index);
-////        fgets(taskInfo->execInfo.data,255,stdin);
-//
-//
+    {
+        taskInfo->execInfo.data;
+//    info("producer[%d]>")
+        info(stdout, "producer[%d]>",taskInfo->index);
+        fgets(taskInfo->execInfo.data,255,stdin);
+
+
 //        strcat(taskInfo->execInfo.data,"test1");
 //        sleep(3);
-//
-//
-//        return EXEC_CORRECT;
-//    }
 
-    //暂无数据
-    {
-        return EXEC_NORMAL;
+
+        return EXEC_CORRECT;
     }
+
+//    //暂无数据
+//    {
+//        return EXEC_NORMAL;
+//    }
 
 //    //数据准备失败
 //    {
