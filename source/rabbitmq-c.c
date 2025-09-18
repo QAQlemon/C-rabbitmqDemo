@@ -199,7 +199,7 @@ RabbitmqBinds_t bindsInfo= {
     }
 };
 consumers_t consumersInfo={
-    .size=0,//注：需要保证至少一个任务，否则client启动失败
+    .size=1,//注：需要保证至少一个任务，否则client启动失败
     .consumers={
         //todo 消费者
         {
@@ -221,7 +221,7 @@ consumers_t consumersInfo={
     }
 };
 producers_t producersInfo={
-    .size=1,//注：需要保证至少一个任务，否则client启动失败
+    .size=0,//注：需要保证至少一个任务，否则client启动失败
     .producers={
         //todo 生产者 采集设备数据
         {
@@ -249,7 +249,7 @@ producers_t producersInfo={
             
             //参数设置
             .exchange_index=0,
-            .confirmMode=0,
+            .confirmMode=1,
             .routingKey=ROUTING_KEY_FAULT_REPORTS,
 
             //todo 消息持久化设置
@@ -270,7 +270,7 @@ void log_threads_exitInfo(){
     for (int i = 0; i < producersInfo.size; ++i) {
         infoLn("producer[%d] exitInfo:", i);
         infoLn("code: %d", producersInfo.producers[i].taskInfo.execInfo.code);
-        infoLn("infoLn: %s", producersInfo.producers[i].taskInfo.execInfo.info);
+        infoLn("info: %s", producersInfo.producers[i].taskInfo.execInfo.info);
         infoLn("");
     }
 
@@ -278,7 +278,7 @@ void log_threads_exitInfo(){
     for (int i = 0; i < consumersInfo.size; ++i) {
         infoLn("consumer[%d] exitInfo:", i);
         infoLn("code: %d", consumersInfo.consumers[i].taskInfo.execInfo.code);
-        infoLn("infoLn: %s", consumersInfo.consumers[i].taskInfo.execInfo.info);
+        infoLn("info: %s", consumersInfo.consumers[i].taskInfo.execInfo.info);
         infoLn("");
     }
 }
@@ -491,7 +491,9 @@ int rabbitmq_check_bind_index(int bind_index){
 
     return 1;
 }
+int check_rabbitmq_server_conn_status(int conn_index){
 
+}
 
 
 //todo reset函数 重置状态和NULL
@@ -1255,14 +1257,6 @@ int rabbitmq_start_producer(int index){
         warnLn("producer[%d]: init fail", index);
         return 0;
     }
-//    producersInfo.producers[index].taskInfo.index=index;
-//
-//    //todo 向通道 注册 任务信息的引用
-//    producerEntity_t_t producer = producersInfo.producers[index];
-//    rabbitmqConnsInfo.conns[producer.conn_index].channelsInfo.channels[producer.channel_index].taskInfo=&(consumersInfo.consumers[index].taskInfo);
-//
-//    //todo 统计 连接 的任务数量
-//    rabbitmqConnsInfo.conns[producer.conn_index].task_nums++;
 
     //todo 启动线程
     return pthread_create(
@@ -1297,12 +1291,6 @@ int rabbitmq_start_consumer(int index){
         warnLn("consumer[%d]: init fail", index);
         return 0;
     }
-//    //todo 向通道 注册 任务信息的引用
-//    consumerEntity_t consumer = consumersInfo.consumers[index];
-//    rabbitmqConnsInfo.conns[consumer.conn_index].channelsInfo.channels[consumer.channel_index].taskInfo=&(consumersInfo.consumers[index].taskInfo);
-//
-//    //todo 统计 连接 的任务数量
-//    rabbitmqConnsInfo.conns[consumer.conn_index].task_nums++;
 
     //todo 启动线程
     return pthread_create(
@@ -1712,7 +1700,6 @@ int consumer_message_handle(const amqp_envelope_t *envelope){
 
 //todo 客户端启动函数
 int rabbitmq_init_client(){
-    work_status=0;
 
     //todo 全局变量
     flag_running=0;
@@ -1853,8 +1840,8 @@ exit:
             warnLn("main: unlocked,work_status=%d", work_status);
 
 
-            //todo 重置部分数据
-
+            //todo 释放连接
+            rabbitmq_close_conns();
 
             //todo 打印退出信息
             log_threads_exitInfo();

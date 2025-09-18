@@ -72,17 +72,53 @@ void *test01(void * args){
 int main(){
 
 //todo rabbitmq客户端程序
-    {
-        while(1){
-            if(rabbitmq_start_client()==0){
-                break;
-            }
-        }
-    }
 //    {
-//        rabbitmq_start_client();
+//        while(1){
+//            if(rabbitmq_start_client()==0){
+//                break;
+//            }
+//        }
 //    }
+    {
+        rabbitmq_start_client();
+    }
 
+//todo
+//    {
+//        rabbitmq_init_conns();
+//        amqp_queue_declare_ok_t *r = amqp_queue_declare(
+//            rabbitmqConnsInfo.conns[0].connState,//连接对象
+//            1,//channel
+//            amqp_cstring_bytes("forCheckingConnStatus"),//队列名称
+//            1,//passive 0-队列不存在会自动创建，对了存在检查参数是否匹配，不匹配返回错误
+//            0,//durable     队列元数据持久化，不保证数据不丢失
+//            0,//exclusive
+//            0,//auto_delete 无消费者在自动删除
+//            amqp_empty_table//额外参数 (通常用amqp_empty_table)
+//        );
+//        amqp_rpc_reply_t reply = amqp_get_rpc_reply(rabbitmqConnsInfo.conns[0].connState);
+//        die_on_amqp_error(reply,"ee");
+//        if(
+//            reply.reply_type==AMQP_RESPONSE_SERVER_EXCEPTION
+//        ){
+//            if(reply.reply.id==AMQP_CONNECTION_CLOSE_METHOD){
+//                warnLn("conn fail");
+//            }
+//            else if(reply.reply.id==AMQP_CHANNEL_CLOSE_METHOD){
+//
+//                warnLn("ch fail");
+//            }
+//
+//            //todo 连接正常
+//        }
+//        if(
+//            reply.reply_type==AMQP_RESPONSE_LIBRARY_EXCEPTION
+//            &&reply.reply.id==AMQP_CONNECTION_CLOSE_METHOD
+//        ){
+//            //todo 连接已断开
+//            warnLn("fail");
+//        }
+//    }
 
 //todo 验证：线程退出时注册的资源释放函数
 //    {
@@ -177,16 +213,17 @@ int wait_ack(taskInfo_t *taskInfo) {
 
     //todo 异常处理
     if (AMQP_RESPONSE_LIBRARY_EXCEPTION == ret.reply_type) {
-        //todo 收到非ack帧
-        if (AMQP_STATUS_UNEXPECTED_STATE == ret.library_error) {
-            taskInfo->execInfo.info="AMQP_STATUS_UNEXPECTED_STATE is not ack frame";
-        }
-        //todo 等待确认已超时
-        else if (AMQP_STATUS_TIMEOUT == ret.library_error) {
-            // Timeout means you're done; no publisher confirms were waiting!
-            taskInfo->execInfo.info="AMQP_STATUS_TIMEOUT";
-        }
-        return EXEC_PRODUCER_CONFIRM_FAIL;//6-发布ACK失败
+        return EXEC_CONN_CLOSED;
+//        //todo 收到非ack帧
+//        if (AMQP_STATUS_UNEXPECTED_STATE == ret.library_error) {
+//            taskInfo->execInfo.info="AMQP_STATUS_UNEXPECTED_STATE is not ack frame";
+//        }
+//        //todo 等待确认已超时
+//        else if (AMQP_STATUS_TIMEOUT == ret.library_error) {
+//            // Timeout means you're done; no publisher confirms were waiting!
+//            taskInfo->execInfo.info="AMQP_STATUS_TIMEOUT";
+//        }
+//        return EXEC_PRODUCER_CONFIRM_FAIL;//6-发布ACK失败
     }
 
     //todo 处理rabbitmq服务发来的响应
@@ -463,8 +500,8 @@ void notify_message_publish_result(taskInfo_t *taskInfo,int success){
     else if(taskInfo->status==PRODUCER_TASK_CONFIRM){
         msg="confirm";
     }
-    warnLn("-------------------------------------------");
-    warnLn("producer[%d]:%s",taskInfo->index,msg,success?"success":"fail");
+//    warnLn("-------------------------------------------");
+    warnLn("producer[%d]:%s %s",taskInfo->index,msg,success==1?"success":"fail");
 
     //todo 通知控制板数据发布情况
 //    if(success){
@@ -493,6 +530,8 @@ int publish_an_message(void *arg){
 
     amqp_basic_properties_t *props = &(producerInfo->props);
 
+    amqp_maybe_release_buffers(connState);
+
     //todo 消息发布
     int res=amqp_basic_publish(
             connState,
@@ -506,9 +545,6 @@ int publish_an_message(void *arg){
             amqp_cstring_bytes(taskInfo->execInfo.data)
     );
     if(res==AMQP_STATUS_OK){
-        infoLn("=======================================");
-        infoLn("producer[%d] send: len=%d", taskInfo->index, strlen(taskInfo->execInfo.data));
-        infoLn(">%s",taskInfo->execInfo.data);
         return EXEC_CORRECT;
     }
     else{
@@ -615,6 +651,10 @@ void *rabbitmq_producer_deal(void *arg){
                     taskInfo->status=PRODUCER_TASK_HANDLE_EXCEPTION;//4-异常处理
                     break;
                 }
+                else if(work_status==CLIENT_STATUS_STOPPING_TASKS){
+                    taskInfo->execInfo.code = EXEC_NOTIFIED_STOP;//10-被通知停止运行
+                    taskInfo->status=PRODUCER_TASK_HANDLE_EXCEPTION;//4-异常处理
+                }
                 //todo 通道暂无检测方式，只能一直等待数据
 //                else if(rabbitmqConnsInfo.conns[conn_index].channelsInfo.channels[conn_index].flag_reset==1){
 //                    taskInfo->execInfo.code = EXEC_CHANNEL_CLOSED;//3-通道已关闭
@@ -657,6 +697,7 @@ void *rabbitmq_producer_deal(void *arg){
                 taskInfo->execInfo.code=res;
 
                 if(res==EXEC_CORRECT){
+                    notify_message_publish_result(taskInfo,1);
                     //todo 检查发布确认是否开启
                     if(producerInfo->confirmMode == 1) {
                         //已发送且需要等待确认
@@ -664,7 +705,6 @@ void *rabbitmq_producer_deal(void *arg){
                         break;
                     }
                     else{
-                        notify_message_publish_result(taskInfo,1);
                         //已发送无需等待确认
                         taskInfo->status=PRODUCER_TASK_WAIT_DATA;//1-等待中
                         break;
@@ -735,11 +775,13 @@ void *rabbitmq_producer_deal(void *arg){
 
                 //todo 退出前处理
                 {
+
                     //todo 停止前进行资源释放
                     if(taskInfo->execInfo.data!=NULL){
                         free(taskInfo->execInfo.data);
                         taskInfo->execInfo.data=NULL;
                     }
+
                     //todo 退出信息设置
                     if(taskInfo->execInfo.info == NULL){
                         taskInfo->execInfo.info=get_code_info(taskInfo->execInfo.code);
@@ -803,15 +845,20 @@ int producer_task_prepare_device_message(void *arg) {
     //todo 填充数据
     //正常返回数据
     {
-        taskInfo->execInfo.data;
-//    info("producer[%d]>")
-        info(stdout, "producer[%d]>",taskInfo->index);
-        fgets(taskInfo->execInfo.data,255,stdin);
+//        taskInfo->execInfo.data;
+//        warnLn("===========================================");
+//        info(stdout, "producer[%d]>",taskInfo->index);
+//        fgets(taskInfo->execInfo.data,255,stdin);
 
-
-//        strcat(taskInfo->execInfo.data,"test1");
-//        sleep(3);
-
+        sleep(1);
+        static int data=0;
+        sprintf(taskInfo->execInfo.data,"%d",data++);
+        warnLn("===========================================");
+        infoLn("producer[%d]: prepared data\nlen=%d\n>%s",
+               taskInfo->index,
+               strlen(taskInfo->execInfo.data),
+               taskInfo->execInfo.data
+        );
 
         return EXEC_CORRECT;
     }
@@ -855,6 +902,7 @@ int producer_task_prepare_fault_message(void *arg){
 
 //    //数据准备失败
 //    {
+//        sleep(10);
 //        return EXEC_PRODUCE_DATA_PREPARE_FAIL;
 //    }
 

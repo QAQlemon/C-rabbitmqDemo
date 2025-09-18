@@ -310,6 +310,9 @@ int rabbitmq_check_channel_index(int conn_index,int channel_index);
 int rabbitmq_check_queue_index(int queue_index);
 int rabbitmq_check_exchange_index(int exchange_index);
 int rabbitmq_check_bind_index(int bind_index);
+//
+int check_rabbitmq_server_conn_status(int conn_index);
+
 
 //todo reset函数 重置状态和NULL
 int rabbitmq_reset_channel(int conn_index,int channel_index);
@@ -361,6 +364,8 @@ int get_available_channel(int conn_index);
 char *get_code_info(int exit_code);
 //获取单个连接下的任务数量
 int get_task_num_of_conn(int conn_index);
+
+
 
 //todo task函数
 void *rabbitmq_task(void *arg);
