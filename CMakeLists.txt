@@ -1,19 +1,34 @@
 cmake_minimum_required(VERSION 3.22)
-project(demo)
+
+#详细构建过程
+set(CMAKE_VERBOSE_MAKEFILE ON)
+
+# 告知当前使用的是交叉编译方式，必须配置
+#SET(CMAKE_SYSTEM_NAME Linux)
+#set(CMAKE_BUILD_TYPE Debug)
 
 #设置C11标准
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+#设置工具链
+#SET(CMAKE_C_COMPILER "/opt/develop/rootfs/buildroot-2021.11.1/output/host/bin/arm-linux-gcc")
+#SET(CMAKE_CXX_COMPILER "/opt/develop/rootfs/buildroot-2021.11.1/output/host/bin/arm-linux-g++")
 
+#指定库文件和头文件的搜索目录
 set(INCLUDE_DIR
+    #ubuntu
     "/usr/local/include"
-)  # 或实际安装路径
+    #debian
+#    "/root/rabbitmq-c-0.15.0/build/lib/include/"
+)  # 或实际头文件路径
 set(LIBRARY_DIR
-    "/usr/local/lib"
+    #ubuntu
     "/usr/lib"
+    "/usr/local/lib"
+    #debian
+#    "/root/rabbitmq-c-0.15.0/build/lib/lib/"
 )  # 或实际库路径
-
 include_directories(${INCLUDE_DIR})
 link_directories(${LIBRARY_DIR})
 
@@ -27,13 +42,14 @@ link_directories(${LIBRARY_DIR})
 
 # 源码目录
 aux_source_directory(./source PROJ_SRC)
-#aux_source_directory(./demo PROJ_DEMO_SRC)
+aux_source_directory(./demo PROJ_DEMO_SRC)
 
 add_executable(target
-#        source/rabbitmq-c.c
+#        ./source/main.c
         ${PROJ_SRC}
 #        ${PROJ_DEMO_SRC}
 )
+
 message(STATUS "==============================")
 # 输出系统包含路径
 message(STATUS "CMAKE_INCLUDE_CURRENT_DIR: ${CMAKE_INCLUDE_PATH}")
@@ -46,5 +62,7 @@ message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
 
 
 message(STATUS "==============================")
-#target_link_directories(target /usr/local/lib/)
 target_link_libraries(target rabbitmq)
+
+
+project(demo)

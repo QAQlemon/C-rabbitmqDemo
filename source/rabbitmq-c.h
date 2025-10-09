@@ -12,11 +12,10 @@
 #include "pthread.h"
 #include <stdio.h>
 
-//todo 宏定义
+//绑定键
 #define BINDING_KEY_PLC_DATA "work.upload.*"
 #define BINDING_KEY_FAULT_REPORTS "work.fault.*"
 #define BINDING_KEY_DEAD_LETTER "work.dead"
-
 //发布用的路由键
 #define ROUTING_KEY_PLC_DATA "work.upload.demo"
 #define ROUTING_KEY_FAULT_REPORTS "work.fault.demo"
@@ -38,7 +37,7 @@
 
 
 
-//结构体
+//客户端配置
 typedef struct {
     char *hostname;
     int port;
@@ -46,7 +45,8 @@ typedef struct {
     char *passwd;
 }RabbitmqConfig_t;//连接登录信息
 
-//任务信息
+
+//任务信息相关
 enum enum_exec_code_t{
     EXEC_ERROR=-1,                  //-1-执行异常
     EXEC_NORMAL,                    //0-正常执行(保持状态)
@@ -97,7 +97,8 @@ typedef struct taskInfoStruct{
     execInfo_t execInfo;//执行信息
 }taskInfo_t;
 
-//连接和通道信息
+
+//连接和通道相关
 #define CHANNEL_MAX_SIZE 3
 typedef struct{
     int flag_reset;//重置标记位 0-无重置 1-需要重置
@@ -133,6 +134,8 @@ typedef struct{
     pthread_cond_t cond_reset_conn;//用于main通知子线程连接重置情况
 }connectionsInfo_t;//包含连接、通道信息
 
+
+//交换机、队列，绑定相关
 #define QUEUE_MAX_SIZE 4
 typedef struct {
     int type;//0-整数 1-字符串 3-布尔
@@ -190,9 +193,7 @@ typedef struct {
 }RabbitmqBinds_t;//绑定
 
 
-
-
-
+//生产端和消费端参数设置
 #define CONSUMER_MAX_SIZE 2
 typedef struct{
     int conn_index;     //连接：rabbitmqConnsInfo.conns[conn_index]
@@ -214,7 +215,6 @@ typedef struct{
     int size;
     consumerEntity_t consumers[CONSUMER_MAX_SIZE];
 }consumers_t;
-
 #define PRODUCER_MAX_SIZE 3
 typedef struct{
     int conn_index;     //连接：rabbitmqConnsInfo.conns[conn_index]
@@ -238,28 +238,25 @@ typedef struct{
     producerEntity_t_t producers[PRODUCER_MAX_SIZE];//0-生产者 1-消费者
 }producers_t;
 
-
+//===============================================
+//全局变量
+//===============================================
 //todo 全局变量
 extern RabbitmqConfig_t rabbitmqConfigInfo;//配置信息
 extern connectionsInfo_t rabbitmqConnsInfo;//连接和通道信息 0-消费 1-生产
 extern RabbitmqExchanges_t exchangesInfo;//交换机
 extern RabbitmqQueues_t queuesInfo;//队列
 extern RabbitmqBinds_t bindsInfo;//绑定信息
-
-//todo 目前一个消费者对应一个连接一个通道一个线程一个队列 一个队列由可多个消费者线程处理
+//一个消费者对应一个连接一个通道一个任务一个线程一个队列 一个队列由可多个消费者线程处理
 extern consumers_t consumersInfo;//消息消费者
+//一个生产者对应一个连接一个通道一个任务一个线程一个交换机
 extern producers_t producersInfo;//消息生产者
 
-//todo main与子线程间通
-typedef struct {
-    pthread_mutex_t mutex;
-    taskInfo_t *taskInfo;
-}lock_t;
-
+//todo 任务同步
+//全局锁
 extern pthread_mutex_t log_mutex;//用于日志输出
 extern pthread_mutex_t global_task_mutex;//用于主线程和任务线程通讯
-
-extern volatile int thread_counts;
+//客户端运行状态
 enum client_work_status_t{
     CLIENT_STATUS_READY=0,          //0-ready就绪
     CLIENT_STATUS_RUNNING,          //1-running运行
@@ -269,39 +266,43 @@ enum client_work_status_t{
     CLIENT_STATUS_EXIT              //5-exit
 };
 extern volatile int work_status;//0-ready就绪 1-running运行 2-conn重置 3-channel重置 4-stop停止 5-exit
-
+//条件变量和全局标志
 extern volatile int flag_running;
-extern pthread_cond_t cond_running;//子->主
+extern pthread_cond_t cond_running;//
 extern volatile int flag_stop;
-extern pthread_cond_t cond_deal;//子->主
+extern pthread_cond_t cond_deal;//
 extern volatile int flag_exit;
-extern pthread_cond_t cond_exit;//主->子
-
-//todo 全局重置标识
+extern pthread_cond_t cond_exit;//
+extern volatile int thread_counts;//当前处于活动的任务数量，用于main控制任务的进行和退出
 extern volatile int flag_reset_conn;//
+//extern volatile int reset_conn_result;//重置结果 -1-失败 0-默认值 1-成功
 extern volatile int flag_reset_channel;//
+//extern volatile int reset_channel_result;//重置结果 -1-失败 0-默认值 1-成功
 
+
+//===============================================
+//函数
+//===============================================
 //todo synchronized
-//任务 通知main所有任务以就绪
+//任务 通知main所有任务已就绪
 void task_notify_main_run();
-//任务 通知main停止
-void task_notify_main_stop(taskInfo_t *taskInfo);
 //任务 通知main处理
 void task_notify_main_deal();
+//任务 通知main停止
+void task_notify_main_stop(taskInfo_t *taskInfo);
 //线程 通知main退出
 void task_notify_main_exit();
-//
+//通知 main处理 连接通道重置
 void task_notify_main_reset_conn(int conn_index);
 void task_notify_main_reset_channel(int conn_index, int channel_index);
-//
-void task_wait_main_reset_conn(int conn_index);
-void task_wait_main_reset_channel(int conn_index, int channel_index);
-//
+//等待 main处理 连接通道重置
+int task_wait_main_reset_conn(int conn_index);
+int task_wait_main_reset_channel(int conn_index, int channel_index);
+//同步工具的初始化和销毁
 void init_synchronize_tools();
 void destroy_synchronize_tools();
 void clean_synchronize_resources(void *arg);
-
-void main_cancel_all_task();
+//void main_cancel_all_task();
 
 
 //todo check函数
@@ -310,8 +311,8 @@ int rabbitmq_check_channel_index(int conn_index,int channel_index);
 int rabbitmq_check_queue_index(int queue_index);
 int rabbitmq_check_exchange_index(int exchange_index);
 int rabbitmq_check_bind_index(int bind_index);
-//
-int check_rabbitmq_server_conn_status(int conn_index);
+//todo 目前暂没有能够检测连接状态的合适方式
+//int check_rabbitmq_server_conn_status(int conn_index);
 
 
 //todo reset函数 重置状态和NULL
@@ -319,8 +320,6 @@ int rabbitmq_reset_channel(int conn_index,int channel_index);
 int rabbitmq_reset_channels(int conn_index);
 int rabbitmq_reset_conn(int conn_index);
 int rabbitmq_reset_conns();
-
-
 
 //todo close函数
 int rabbitmq_close_channel(int conn_index,int channel_index);
@@ -339,23 +338,23 @@ int rabbitmq_init_queue(int queue_index);
 int rabbitmq_init_exchange(int exchange_index);
 int rabbitmq_init_bind(int bind_index);
 
+
+//消费端和生产端任务初始化
 int rabbitmq_init_consumer(int consumer_index);
 //int rabbitmq_init_consumers();
 int rabbitmq_init_producer(int producer_index);
 //int rabbitmq_init_producers();
-
 int init_role_by_taskInfo(taskInfo_t *taskInfo);
 int init_roles_of_conn(int conn_index);
 
 //todo start函数
+//生产端
 int rabbitmq_start_producer(int index);
 int rabbitmq_start_producers();
-
+//消费端
 int rabbitmq_start_consumer(int index);
 int rabbitmq_start_consumers();
-//todo 客户端启动函数
-int rabbitmq_init_client();
-int rabbitmq_start_client();
+
 
 //todo tools函数
 //分配指定连接下的可用通道
@@ -363,66 +362,50 @@ int get_available_channel(int conn_index);
 //获取code对应的信息
 char *get_code_info(int exit_code);
 //获取单个连接下的任务数量
-int get_task_num_of_conn(int conn_index);
-
+//int get_task_num_of_conn(int conn_index);
 
 
 //todo task函数
+//任务模板
 void *rabbitmq_task(void *arg);
-//生产端和消费端的状态处理
-int get_an_message(void *arg);//下拉 定时数据
+//生产端状态机处理
+int get_an_message(void *arg);
 void *rabbitmq_consumer_deal(void *arg);
-
-//通知上传情况
-void notify_message_publish_result(taskInfo_t *taskInfo,int success);
+//生产端状态机处理
+void notify_message_publish_result(taskInfo_t *taskInfo,int success);//向控制板通知上传情况
 int publish_an_message(void *arg);
 int wait_ack(taskInfo_t *taskInfo);
 void *rabbitmq_producer_deal(void *arg);
-
-
-//业务函数 非阻塞 后续扩展阻塞支持
+//todo 业务函数 非阻塞 后续扩展阻塞支持
+//下拉数据
 int consumer_task_handle_cron_message(void *arg);//解析转发 定时消息数据
+//上传数据
 int producer_task_prepare_device_message(void *arg);//准备 采集设备数据
 int producer_task_prepare_fault_message(void *arg);//准备 设备故障数据
 
-//业务函数 注：此类函数处于while循环中，仅负责单次操作，每次操作完必须返回操作结果
-int producer_task_upload_device_data(void *arg);//上传 采集设备数据
-int producer_task_upload_fault_data(void *arg);//上传 设备故障数据
-
-
-
-//todo parse解析消息
-int message_parse(char *buffer,int size);
-
-//todo pack打包消息
-int message_pack(char *buffer,int size);
-
 //todo handle函数
-int consumer_message_handle(const amqp_envelope_t *envelope);
-int producer_prepare_message(char *buffer,int size);
-
 int main_handle_reset_channels();
 int main_handle_reset_conns();
 
+//todo client客户端函数
+//初始化全局变量，连接、通道、队列、交换机、绑定
+int rabbitmq_init_client();
+int rabbitmq_start_client();
 
 
-
-
-//todo 打印线程退出时记录的信息
-void log_threads_exitInfo();
+//todo log函数
 //日志打印
 void vlog(FILE *fd,char *str,va_list args);
-void info(FILE *fd , char *str, ...);
 void infoLn(char *str, ...);
 void warnLn(char *str, ...);
-
-//调试打印信息
-void print_lock_info(const pthread_mutex_t *mutex);
-void print_cond_info(const pthread_cond_t *cond);
-void print_synchronized_info(const pthread_mutex_t *mutex,const pthread_cond_t *cond);
-
+//打印同步信息
+//void print_lock_info(const pthread_mutex_t *mutex);
+//void print_cond_info(const pthread_cond_t *cond);
+//void print_synchronized_info(const pthread_mutex_t *mutex,const pthread_cond_t *cond);
+//打印消息
 void print_rcv_message(amqp_envelope_t *envelope);
 void print_send_message(taskInfo_t *taskInfo);
-
+//打印线程退出时记录的信息
+void print_threads_exitInfo();
 
 #endif //C_RABBITMQDEMO_RABBITMQ_C_H
